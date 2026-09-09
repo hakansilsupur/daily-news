@@ -1,12 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { Article, NewsSource, RegionFilter } from '../types';
+import type {
+  Article,
+  LanguageFilter,
+  NewsSource,
+  RegionFilter,
+  UiLanguagePreference,
+} from '../types';
 
 const KEYS = {
   region: 'prefs:region',
   enabledSources: 'prefs:enabledSources',
   customSources: 'prefs:customSources',
   saved: 'prefs:savedArticles',
+  uiLanguage: 'prefs:uiLanguage',
+  languageFilter: 'prefs:languageFilter',
 } as const;
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -42,3 +50,11 @@ export const saveCustomSources = (sources: NewsSource[]) => writeJson(KEYS.custo
 
 export const loadSavedArticles = () => readJson<Article[]>(KEYS.saved, []);
 export const saveSavedArticles = (articles: Article[]) => writeJson(KEYS.saved, articles);
+
+/** Defaults to `system`, so a fresh install follows the device language. */
+export const loadUiLanguage = () => readJson<UiLanguagePreference>(KEYS.uiLanguage, 'system');
+export const saveUiLanguage = (preference: UiLanguagePreference) =>
+  writeJson(KEYS.uiLanguage, preference);
+
+export const loadLanguageFilter = () => readJson<LanguageFilter>(KEYS.languageFilter, 'all');
+export const saveLanguageFilter = (filter: LanguageFilter) => writeJson(KEYS.languageFilter, filter);

@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { BUILT_IN_SOURCES } from '../data/sources';
+import { BUILT_IN_SOURCES, filterSources } from '../data/sources';
+import { resolveLanguage, stringsFor, type AddSourceError, type Strings } from '../i18n';
 import { fetchAllFeeds, mergeAndSort, searchArticles } from '../services/newsService';
 import * as prefs from '../storage/prefs';
-import type { Article, NewsSource, RegionFilter } from '../types';
+import type {
+  Article,
+  LanguageFilter,
+  NewsSource,
+  RegionFilter,
+  UiLanguage,
+  UiLanguagePreference,
+} from '../types';
 
 export interface NewsApp {
   ready: boolean;
@@ -14,14 +22,26 @@ export interface NewsApp {
   errors: Record<string, string>;
 
   allSources: NewsSource[];
-  /** Sources in the current region, whether enabled or not. */
+  /** Sources matching the region and language filters, whether enabled or not. */
   regionSources: NewsSource[];
-  /** Sources actually fetched: in the current region and switched on. */
+  /** Sources actually fetched: matching the filters and switched on. */
   activeSources: NewsSource[];
   enabledIds: string[] | null;
 
   region: RegionFilter;
   setRegion: (region: RegionFilter) => void;
+
+  /** Language of the sources to show — independent of the interface language. */
+  languageFilter: LanguageFilter;
+  setLanguageFilter: (filter: LanguageFilter) => void;
+
+  /** What the user chose, including `system`. */
+  uiLanguagePreference: UiLanguagePreference;
+  /** The language that choice resolves to right now. */
+  uiLanguage: UiLanguage;
+  setUiLanguagePreference: (preference: UiLanguagePreference) => void;
+  /** Translated strings for `uiLanguage`. */
+  t: Strings;
 
   query: string;
   setQuery: (query: string) => void;
@@ -33,7 +53,12 @@ export interface NewsApp {
   toggleSource: (id: string) => void;
   setAllSourcesEnabled: (enabled: boolean) => void;
 
-  addCustomSource: (input: { name: string; feedUrl: string; region: 'turkey' | 'world' }) => string | null;
+  /** Returns an error code for the caller to translate, or null on success. */
+  addCustomSource: (input: {
+    name: string;
+    feedUrl: string;
+    region: 'turkey' | 'world';
+  }) => AddSourceError | null;
   removeCustomSource: (id: string) => void;
 
   isSaved: (id: string) => boolean;
@@ -42,13 +67,11 @@ export interface NewsApp {
   refresh: () => void;
 }
 
-function inRegion(source: NewsSource, region: RegionFilter): boolean {
-  return region === 'all' || source.region === region;
-}
-
 export function useNewsApp(): NewsApp {
   const [ready, setReady] = useState(false);
   const [region, setRegionState] = useState<RegionFilter>('all');
+  const [languageFilter, setLanguageFilterState] = useState<LanguageFilter>('all');
+  const [uiLanguagePreference, setUiLanguagePreferenceState] = useState<UiLanguagePreference>('system');
   const [enabledIds, setEnabledIds] = useState<string[] | null>(null);
   const [customSources, setCustomSources] = useState<NewsSource[]>([]);
   const [savedArticles, setSavedArticles] = useState<Article[]>([]);
@@ -68,18 +91,23 @@ export function useNewsApp(): NewsApp {
     let cancelled = false;
 
     (async () => {
-      const [storedRegion, storedEnabled, storedCustom, storedSaved] = await Promise.all([
-        prefs.loadRegion(),
-        prefs.loadEnabledSourceIds(),
-        prefs.loadCustomSources(),
-        prefs.loadSavedArticles(),
-      ]);
+      const [storedRegion, storedEnabled, storedCustom, storedSaved, storedUiLanguage, storedLanguageFilter] =
+        await Promise.all([
+          prefs.loadRegion(),
+          prefs.loadEnabledSourceIds(),
+          prefs.loadCustomSources(),
+          prefs.loadSavedArticles(),
+          prefs.loadUiLanguage(),
+          prefs.loadLanguageFilter(),
+        ]);
 
       if (cancelled) return;
       setRegionState(storedRegion);
       setEnabledIds(storedEnabled);
       setCustomSources(storedCustom);
       setSavedArticles(storedSaved);
+      setUiLanguagePreferenceState(storedUiLanguage);
+      setLanguageFilterState(storedLanguageFilter);
       setReady(true);
     })();
 
@@ -99,8 +127,8 @@ export function useNewsApp(): NewsApp {
   );
 
   const regionSources = useMemo(
-    () => allSources.filter((source) => inRegion(source, region)),
-    [allSources, region],
+    () => filterSources(allSources, { region, language: languageFilter }),
+    [allSources, region, languageFilter],
   );
 
   const activeSources = useMemo(
@@ -156,6 +184,19 @@ export function useNewsApp(): NewsApp {
     void prefs.saveRegion(next);
   }, []);
 
+  const setLanguageFilter = useCallback((next: LanguageFilter) => {
+    setLanguageFilterState(next);
+    void prefs.saveLanguageFilter(next);
+  }, []);
+
+  const setUiLanguagePreference = useCallback((next: UiLanguagePreference) => {
+    setUiLanguagePreferenceState(next);
+    void prefs.saveUiLanguage(next);
+  }, []);
+
+  const uiLanguage = useMemo(() => resolveLanguage(uiLanguagePreference), [uiLanguagePreference]);
+  const t = useMemo(() => stringsFor(uiLanguage), [uiLanguage]);
+
   const commitEnabled = useCallback((ids: string[]) => {
     setEnabledIds(ids);
     void prefs.saveEnabledSourceIds(ids);
@@ -194,9 +235,9 @@ export function useNewsApp(): NewsApp {
       const trimmedName = name.trim();
       const trimmedUrl = feedUrl.trim();
 
-      if (!trimmedName) return 'Give the source a name.';
-      if (!/^https?:\/\/.+/i.test(trimmedUrl)) return 'Enter a full feed URL starting with http(s)://.';
-      if (allSources.some((source) => source.feedUrl === trimmedUrl)) return 'That feed is already in your list.';
+      if (!trimmedName) return 'name-required';
+      if (!/^https?:\/\/.+/i.test(trimmedUrl)) return 'invalid-url';
+      if (allSources.some((source) => source.feedUrl === trimmedUrl)) return 'duplicate';
 
       commitCustom([
         ...customSources,
@@ -260,6 +301,12 @@ export function useNewsApp(): NewsApp {
     enabledIds,
     region,
     setRegion,
+    languageFilter,
+    setLanguageFilter,
+    uiLanguagePreference,
+    uiLanguage,
+    setUiLanguagePreference,
+    t,
     query,
     setQuery,
     articles,

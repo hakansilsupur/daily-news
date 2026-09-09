@@ -9,7 +9,13 @@ Built with Expo (SDK 57) + React Native + TypeScript.
 
 ## Features
 
+- **Two interface languages** — Türkçe and English, switched in the Sources sheet
+  under `Dil / Language`. `System` follows the device locale. The choice is
+  persisted and also drives relative timestamps (`2 saat önce` / `2h ago`).
 - **Region filter** — `All` / `Türkiye` / `Worldwide`, persisted between launches.
+- **Feed language filter** — `All` / `Türkçe` / `English`, applied on top of the
+  region filter using each source's `language`. It is independent of the
+  interface language, so you can read an English UI over Turkish feeds.
 - **Source filter** — every source has a toggle. Flip them from the chip row on
   the feed, or from the Sources sheet with `Select all` / `Clear` shortcuts.
 - **Add your own feed** — paste any RSS/Atom URL, name it, tag it Türkiye or
@@ -117,16 +123,19 @@ anything reported as `FAIL` or `EMPTY` in `src/data/sources.ts`.
 ```
 App.tsx                     app shell: tabs, theme, filter sheet
 src/
-  types.ts                  Article / NewsSource / Region models
+  types.ts                  Article / NewsSource / Region / language models
   theme.ts                  light + dark palettes
-  data/sources.ts           built-in feeds, tagged by region and category
+  i18n/
+    strings.ts              every UI string, in Turkish and English
+    index.ts                locale detection and language resolution
+  data/sources.ts           built-in feeds, tagged by region, category, language
   services/
     rss.ts                  fetch + parse RSS 2.0 / RSS 1.0 (RDF) / Atom
     newsService.ts          parallel fetch, dedupe, sort, search, timestamps
     openArticle.ts          in-app browser with system-browser fallback
-  storage/prefs.ts          AsyncStorage persistence (filters, custom feeds, saves)
+  storage/prefs.ts          AsyncStorage persistence (filters, language, feeds, saves)
   hooks/useNewsApp.ts       all app state in one hook
-  components/               ArticleCard, RegionTabs, SourceChips, TabBar, …
+  components/               ArticleCard, SegmentedControl, SourceChips, TabBar, …
   screens/                  FeedScreen, SavedScreen
 tests/feed.test.mts         parser + merge/search/format unit tests
 scripts/check-feeds.mts     live feed health check
@@ -140,9 +149,19 @@ BBC News Türkçe, Bianet, Dünya Gazetesi, Webrazzi, Fanatik.
 **Worldwide** — BBC World, Al Jazeera, The Guardian, NPR World, Deutsche Welle,
 France 24, Euronews, Reuters Agency, CNBC, Ars Technica, ESPN.
 
-Each entry in `src/data/sources.ts` carries an `id`, `region`, `category` and
-`feedUrl`. Adding a source is a one-line edit — but keep existing `id`s stable,
-since they are what user filter preferences are stored against.
+Each entry in `src/data/sources.ts` carries an `id`, `region`, `category`,
+`language` and `feedUrl`. Adding a source is a one-line edit — but keep existing
+`id`s stable, since they are what user filter preferences are stored against.
+
+## Adding a language
+
+`src/i18n/strings.ts` holds one `Strings` object per language, so adding a third
+is: extend `UiLanguage` in `src/types.ts`, add the object, and list it in
+`UI_LANGUAGES` / `UI_LANGUAGE_PREFERENCES`. `Strings` is a flat interface, so a
+missing key is a compile error rather than a blank label, and a unit test
+asserts both tables have the same shape. `detectSystemLanguage()` reads the
+device locale from `Intl` — no native module, so no rebuild is needed to change
+languages at runtime.
 
 ## How fetching works
 

@@ -36,6 +36,7 @@ function AppShell() {
 
       <TabBar
         theme={theme}
+        strings={app.t}
         active={tab}
         savedCount={app.savedArticles.length}
         onChange={setTab}

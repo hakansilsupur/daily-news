@@ -2,29 +2,31 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { Strings } from '../i18n';
 import type { Theme } from '../theme';
 
 export type TabKey = 'feed' | 'saved';
 
 const TABS: {
   key: TabKey;
-  label: string;
+  labelKey: 'tabHeadlines' | 'tabSaved';
   icon: ComponentProps<typeof Ionicons>['name'];
   activeIcon: ComponentProps<typeof Ionicons>['name'];
 }[] = [
-  { key: 'feed', label: 'Headlines', icon: 'newspaper-outline', activeIcon: 'newspaper' },
-  { key: 'saved', label: 'Saved', icon: 'bookmark-outline', activeIcon: 'bookmark' },
+  { key: 'feed', labelKey: 'tabHeadlines', icon: 'newspaper-outline', activeIcon: 'newspaper' },
+  { key: 'saved', labelKey: 'tabSaved', icon: 'bookmark-outline', activeIcon: 'bookmark' },
 ];
 
 interface Props {
   theme: Theme;
+  strings: Strings;
   active: TabKey;
   savedCount: number;
   onChange: (tab: TabKey) => void;
   bottomInset: number;
 }
 
-export function TabBar({ theme, active, savedCount, onChange, bottomInset }: Props) {
+export function TabBar({ theme, strings, active, savedCount, onChange, bottomInset }: Props) {
   return (
     <View
       style={[
@@ -39,13 +41,14 @@ export function TabBar({ theme, active, savedCount, onChange, bottomInset }: Pro
       {TABS.map((tab) => {
         const selected = tab.key === active;
         const badge = tab.key === 'saved' && savedCount > 0 ? savedCount : null;
+        const label = strings[tab.labelKey];
 
         return (
           <Pressable
             key={tab.key}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
-            accessibilityLabel={tab.label}
+            accessibilityLabel={label}
             onPress={() => onChange(tab.key)}
             style={styles.tab}
           >
@@ -64,7 +67,7 @@ export function TabBar({ theme, active, savedCount, onChange, bottomInset }: Pro
               ) : null}
             </View>
             <Text style={[styles.label, { color: selected ? theme.accent : theme.textMuted }]}>
-              {tab.label}
+              {label}
             </Text>
           </Pressable>
         );

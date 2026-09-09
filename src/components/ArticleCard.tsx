@@ -2,20 +2,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { memo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { Strings } from '../i18n';
 import { formatRelativeTime } from '../services/newsService';
 import type { Theme } from '../theme';
-import type { Article } from '../types';
+import type { Article, UiLanguage } from '../types';
 
 interface Props {
   article: Article;
   theme: Theme;
+  language: UiLanguage;
+  strings: Strings;
   saved: boolean;
   onPress: (article: Article) => void;
   onToggleSave: (article: Article) => void;
 }
 
-function ArticleCardBase({ article, theme, saved, onPress, onToggleSave }: Props) {
-  const timeLabel = formatRelativeTime(article.publishedAt);
+function ArticleCardBase({ article, theme, language, strings, saved, onPress, onToggleSave }: Props) {
+  const timeLabel = formatRelativeTime(article.publishedAt, Date.now(), language);
 
   return (
     <Pressable
@@ -62,7 +65,7 @@ function ArticleCardBase({ article, theme, saved, onPress, onToggleSave }: Props
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={saved ? 'Remove from saved' : 'Save article'}
+        accessibilityLabel={saved ? strings.removeSavedLabel : strings.saveArticleLabel}
         hitSlop={10}
         onPress={() => onToggleSave(article)}
         style={styles.saveButton}

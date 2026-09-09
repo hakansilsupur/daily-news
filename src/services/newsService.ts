@@ -1,5 +1,6 @@
 import { fetchFeed } from './rss';
-import type { Article, FeedResult, NewsSource } from '../types';
+import { localeTag, stringsFor } from '../i18n';
+import type { Article, FeedResult, NewsSource, UiLanguage } from '../types';
 
 /**
  * Fetches every requested feed in parallel. A feed that fails does not sink the
@@ -51,20 +52,25 @@ export function searchArticles(articles: Article[], query: string): Article[] {
   );
 }
 
-export function formatRelativeTime(timestamp: number, now: number = Date.now()): string {
+export function formatRelativeTime(
+  timestamp: number,
+  now: number = Date.now(),
+  language: UiLanguage = 'en',
+): string {
   if (!timestamp) return '';
 
+  const t = stringsFor(language);
   const seconds = Math.max(0, Math.round((now - timestamp) / 1000));
-  if (seconds < 60) return 'just now';
+  if (seconds < 60) return t.justNow;
 
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return t.minutesAgo(minutes);
 
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t.hoursAgo(hours);
 
   const days = Math.round(hours / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return t.daysAgo(days);
 
-  return new Date(timestamp).toLocaleDateString();
+  return new Date(timestamp).toLocaleDateString(localeTag(language));
 }

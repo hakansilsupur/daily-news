@@ -14,17 +14,21 @@ interface Props {
 }
 
 export function SavedScreen({ app, theme }: Props) {
+  const { t } = app;
+
   const renderItem = useCallback(
     ({ item }: { item: Article }) => (
       <ArticleCard
         article={item}
         theme={theme}
+        language={app.uiLanguage}
+        strings={t}
         saved
         onPress={openArticle}
         onToggleSave={app.toggleSaved}
       />
     ),
-    [theme, app.toggleSaved],
+    [theme, app.uiLanguage, t, app.toggleSaved],
   );
 
   return (
@@ -35,9 +39,9 @@ export function SavedScreen({ app, theme }: Props) {
       contentContainerStyle={styles.listContent}
       ListHeaderComponent={
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Saved</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t.savedTitle}</Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            {app.savedArticles.length} article{app.savedArticles.length === 1 ? '' : 's'} kept on this device
+            {t.savedCount(app.savedArticles.length)}
           </Text>
         </View>
       }
@@ -45,8 +49,8 @@ export function SavedScreen({ app, theme }: Props) {
         <EmptyState
           theme={theme}
           icon="bookmark-outline"
-          title="Nothing saved yet"
-          message="Tap the bookmark on any headline to keep it here for later."
+          title={t.nothingSavedTitle}
+          message={t.nothingSavedMessage}
         />
       }
     />

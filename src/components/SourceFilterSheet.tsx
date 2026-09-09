@@ -13,10 +13,11 @@ import {
   View,
 } from 'react-native';
 
-import { CATEGORY_LABELS, REGION_LABELS } from '../data/sources';
+import { SegmentedControl } from './SegmentedControl';
+import { localeTag, UI_LANGUAGE_PREFERENCES, type AddSourceError } from '../i18n';
 import type { NewsApp } from '../hooks/useNewsApp';
 import type { Theme } from '../theme';
-import type { NewsSource, Region } from '../types';
+import type { LanguageFilter, NewsSource, Region, UiLanguagePreference } from '../types';
 
 interface Props {
   visible: boolean;
@@ -26,10 +27,23 @@ interface Props {
 }
 
 export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
+  const { t } = app;
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [newRegion, setNewRegion] = useState<Region>('turkey');
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<AddSourceError | null>(null);
+
+  const uiLanguageOptions: { value: UiLanguagePreference; label: string }[] =
+    UI_LANGUAGE_PREFERENCES.map((preference) => ({
+      value: preference,
+      label: t.uiLanguageOption[preference],
+    }));
+
+  const feedLanguageOptions: { value: LanguageFilter; label: string }[] = [
+    { value: 'all', label: t.languageFilterOption.all },
+    { value: 'tr', label: t.languageFilterOption.tr },
+    { value: 'en', label: t.languageFilterOption.en },
+  ];
 
   const grouped: { region: Region; sources: NewsSource[] }[] = (
     ['turkey', 'world'] as Region[]
@@ -58,8 +72,8 @@ export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
         >
           <View style={[styles.sheet, { backgroundColor: theme.background }]}>
             <View style={[styles.header, { borderBottomColor: theme.border }]}>
-              <Text style={[styles.headerTitle, { color: theme.text }]}>Sources</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Close" hitSlop={10} onPress={onClose}>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>{t.sheetTitle}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={10} onPress={onClose}>
                 <Ionicons name="close" size={24} color={theme.textMuted} />
               </Pressable>
             </View>
@@ -69,13 +83,13 @@ export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
                 onPress={() => app.setAllSourcesEnabled(true)}
                 style={[styles.bulkButton, { borderColor: theme.border, backgroundColor: theme.surface }]}
               >
-                <Text style={[styles.bulkText, { color: theme.text }]}>Select all</Text>
+                <Text style={[styles.bulkText, { color: theme.text }]}>{t.selectAll}</Text>
               </Pressable>
               <Pressable
                 onPress={() => app.setAllSourcesEnabled(false)}
                 style={[styles.bulkButton, { borderColor: theme.border, backgroundColor: theme.surface }]}
               >
-                <Text style={[styles.bulkText, { color: theme.text }]}>Clear</Text>
+                <Text style={[styles.bulkText, { color: theme.text }]}>{t.clear}</Text>
               </Pressable>
             </View>
 
@@ -84,10 +98,34 @@ export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
             >
+              <View style={styles.group}>
+                <Text style={[styles.groupTitle, { color: theme.textMuted }]}>{t.languageGroup}</Text>
+
+                <Text style={[styles.settingLabel, { color: theme.text }]}>{t.interfaceLanguage}</Text>
+                <SegmentedControl
+                  theme={theme}
+                  options={uiLanguageOptions}
+                  value={app.uiLanguagePreference}
+                  onChange={app.setUiLanguagePreference}
+                  compact
+                  flush
+                />
+
+                <Text style={[styles.settingLabel, { color: theme.text }]}>{t.feedLanguage}</Text>
+                <SegmentedControl
+                  theme={theme}
+                  options={feedLanguageOptions}
+                  value={app.languageFilter}
+                  onChange={app.setLanguageFilter}
+                  compact
+                  flush
+                />
+              </View>
+
               {grouped.map((group) => (
                 <View key={group.region} style={styles.group}>
                   <Text style={[styles.groupTitle, { color: theme.textMuted }]}>
-                    {REGION_LABELS[group.region].toUpperCase()}
+                    {t.regionLabel[group.region].toLocaleUpperCase(localeTag(app.uiLanguage))}
                   </Text>
 
                   {group.sources.map((source) => {
@@ -103,15 +141,15 @@ export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
                           </Text>
                           <Text style={[styles.rowSub, { color: failed ? theme.danger : theme.textMuted }]} numberOfLines={1}>
                             {failed
-                              ? `Unavailable — ${failed}`
-                              : `${CATEGORY_LABELS[source.category]} · ${source.language.toUpperCase()}`}
+                              ? t.unavailable(failed)
+                              : `${t.categoryLabel[source.category]} · ${source.language.toUpperCase()}`}
                           </Text>
                         </View>
 
                         {source.custom ? (
                           <Pressable
                             accessibilityRole="button"
-                            accessibilityLabel={`Remove ${source.name}`}
+                            accessibilityLabel={t.removeSourceLabel(source.name)}
                             hitSlop={8}
                             onPress={() => app.removeCustomSource(source.id)}
                             style={styles.removeButton}
@@ -133,19 +171,19 @@ export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
               ))}
 
               <View style={styles.group}>
-                <Text style={[styles.groupTitle, { color: theme.textMuted }]}>ADD A FEED</Text>
+                <Text style={[styles.groupTitle, { color: theme.textMuted }]}>{t.addFeedGroup}</Text>
 
                 <TextInput
                   value={name}
                   onChangeText={setName}
-                  placeholder="Source name"
+                  placeholder={t.sourceNamePlaceholder}
                   placeholderTextColor={theme.textMuted}
                   style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
                 />
                 <TextInput
                   value={url}
                   onChangeText={setUrl}
-                  placeholder="https://example.com/rss"
+                  placeholder={t.feedUrlPlaceholder}
                   placeholderTextColor={theme.textMuted}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -169,7 +207,7 @@ export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
                         ]}
                       >
                         <Text style={[styles.regionOptionText, { color: selected ? theme.accent : theme.textMuted }]}>
-                          {REGION_LABELS[region]}
+                          {t.regionLabel[region]}
                         </Text>
                       </Pressable>
                     );
@@ -177,11 +215,13 @@ export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
                 </View>
 
                 {formError ? (
-                  <Text style={[styles.formError, { color: theme.danger }]}>{formError}</Text>
+                  <Text style={[styles.formError, { color: theme.danger }]}>
+                    {t.addSourceError[formError]}
+                  </Text>
                 ) : null}
 
                 <Pressable onPress={handleAdd} style={[styles.addButton, { backgroundColor: theme.accent }]}>
-                  <Text style={[styles.addButtonText, { color: theme.accentText }]}>Add source</Text>
+                  <Text style={[styles.addButtonText, { color: theme.accentText }]}>{t.addSource}</Text>
                 </Pressable>
               </View>
             </ScrollView>
@@ -249,6 +289,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
+  },
+  settingLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 2,
   },
   row: {
     flexDirection: 'row',

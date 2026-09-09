@@ -13,13 +13,13 @@ import {
 
 import { ArticleCard } from '../components/ArticleCard';
 import { EmptyState } from '../components/EmptyState';
-import { RegionTabs } from '../components/RegionTabs';
+import { SegmentedControl } from '../components/SegmentedControl';
 import { SourceChips } from '../components/SourceChips';
 import type { NewsApp } from '../hooks/useNewsApp';
 import { formatRelativeTime } from '../services/newsService';
 import { openArticle } from '../services/openArticle';
 import type { Theme } from '../theme';
-import type { Article } from '../types';
+import type { Article, LanguageFilter, RegionFilter } from '../types';
 
 interface Props {
   app: NewsApp;
@@ -28,35 +28,52 @@ interface Props {
 }
 
 export function FeedScreen({ app, theme, onOpenFilters }: Props) {
+  const { t } = app;
   const failedCount = Object.keys(app.errors).length;
+
+  const regionOptions: { value: RegionFilter; label: string }[] = [
+    { value: 'all', label: t.regionFilter.all },
+    { value: 'turkey', label: t.regionFilter.turkey },
+    { value: 'world', label: t.regionFilter.world },
+  ];
+
+  const languageOptions: { value: LanguageFilter; label: string }[] = [
+    { value: 'all', label: t.languageFilterOption.all },
+    { value: 'tr', label: t.languageFilterOption.tr },
+    { value: 'en', label: t.languageFilterOption.en },
+  ];
 
   const renderItem = useCallback(
     ({ item }: { item: Article }) => (
       <ArticleCard
         article={item}
         theme={theme}
+        language={app.uiLanguage}
+        strings={t}
         saved={app.isSaved(item.id)}
         onPress={openArticle}
         onToggleSave={app.toggleSaved}
       />
     ),
-    [theme, app.isSaved, app.toggleSaved],
+    [theme, app.uiLanguage, t, app.isSaved, app.toggleSaved],
   );
 
   const header = (
     <View style={styles.headerBlock}>
       <View style={styles.titleRow}>
         <View>
-          <Text style={[styles.title, { color: theme.text }]}>Headlines</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t.feedTitle}</Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            {app.activeSources.length} of {app.regionSources.length} sources
-            {app.lastUpdated ? ` · updated ${formatRelativeTime(app.lastUpdated)}` : ''}
+            {t.sourceCount(app.activeSources.length, app.regionSources.length)}
+            {app.lastUpdated
+              ? t.updatedSuffix(formatRelativeTime(app.lastUpdated, Date.now(), app.uiLanguage))
+              : ''}
           </Text>
         </View>
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Filter sources"
+          accessibilityLabel={t.filterSourcesLabel}
           onPress={onOpenFilters}
           style={[styles.filterButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
         >
@@ -69,19 +86,32 @@ export function FeedScreen({ app, theme, onOpenFilters }: Props) {
         <TextInput
           value={app.query}
           onChangeText={app.setQuery}
-          placeholder="Search headlines"
+          placeholder={t.searchPlaceholder}
           placeholderTextColor={theme.textMuted}
           style={[styles.searchInput, { color: theme.text }]}
           returnKeyType="search"
         />
         {app.query ? (
-          <Pressable accessibilityLabel="Clear search" hitSlop={8} onPress={() => app.setQuery('')}>
+          <Pressable accessibilityLabel={t.clearSearchLabel} hitSlop={8} onPress={() => app.setQuery('')}>
             <Ionicons name="close-circle" size={16} color={theme.textMuted} />
           </Pressable>
         ) : null}
       </View>
 
-      <RegionTabs theme={theme} value={app.region} onChange={app.setRegion} />
+      <SegmentedControl
+        theme={theme}
+        options={regionOptions}
+        value={app.region}
+        onChange={app.setRegion}
+      />
+
+      <SegmentedControl
+        theme={theme}
+        options={languageOptions}
+        value={app.languageFilter}
+        onChange={app.setLanguageFilter}
+        compact
+      />
 
       <SourceChips
         theme={theme}
@@ -92,7 +122,7 @@ export function FeedScreen({ app, theme, onOpenFilters }: Props) {
 
       {failedCount > 0 ? (
         <Text style={[styles.warning, { color: theme.danger }]}>
-          {failedCount} source{failedCount > 1 ? 's' : ''} could not be reached.
+          {t.sourcesUnreachable(failedCount)}
         </Text>
       ) : null}
     </View>
@@ -103,7 +133,7 @@ export function FeedScreen({ app, theme, onOpenFilters }: Props) {
       return (
         <View style={styles.loading}>
           <ActivityIndicator color={theme.accent} />
-          <Text style={[styles.loadingText, { color: theme.textMuted }]}>Fetching feeds…</Text>
+          <Text style={[styles.loadingText, { color: theme.textMuted }]}>{t.fetchingFeeds}</Text>
         </View>
       );
     }
@@ -113,9 +143,9 @@ export function FeedScreen({ app, theme, onOpenFilters }: Props) {
         <EmptyState
           theme={theme}
           icon="funnel-outline"
-          title="No sources selected"
-          message="Turn on at least one source to start seeing headlines."
-          actionLabel="Choose sources"
+          title={t.noSourcesTitle}
+          message={t.noSourcesMessage}
+          actionLabel={t.chooseSources}
           onAction={onOpenFilters}
         />
       );
@@ -126,8 +156,8 @@ export function FeedScreen({ app, theme, onOpenFilters }: Props) {
         <EmptyState
           theme={theme}
           icon="search-outline"
-          title="No matches"
-          message={`Nothing in the current feed matches “${app.query}”.`}
+          title={t.noMatchesTitle}
+          message={t.noMatchesMessage(app.query)}
         />
       );
     }
@@ -136,8 +166,8 @@ export function FeedScreen({ app, theme, onOpenFilters }: Props) {
       <EmptyState
         theme={theme}
         icon="cloud-offline-outline"
-        title="Nothing to show"
-        message="The selected feeds returned no articles. Pull down to try again."
+        title={t.nothingToShowTitle}
+        message={t.nothingToShowMessage}
       />
     );
   };

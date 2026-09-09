@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { filterSources } from '../src/data/sources';
+import { resolveLanguage, STRINGS } from '../src/i18n';
 import {
   formatRelativeTime,
   mergeAndSort,
@@ -130,6 +132,61 @@ test('relative timestamps', () => {
   assert.equal(formatRelativeTime(now - 3 * 3_600_000, now), '3h ago');
   assert.equal(formatRelativeTime(now - 2 * 86_400_000, now), '2d ago');
   assert.equal(formatRelativeTime(0, now), '', 'undated articles show nothing');
+});
+
+test('relative timestamps follow the interface language', () => {
+  const now = Date.parse('2026-09-08T12:00:00Z');
+
+  assert.equal(formatRelativeTime(now - 30_000, now, 'tr'), 'az önce');
+  assert.equal(formatRelativeTime(now - 5 * 60_000, now, 'tr'), '5 dk önce');
+  assert.equal(formatRelativeTime(now - 3 * 3_600_000, now, 'tr'), '3 saat önce');
+  assert.equal(formatRelativeTime(now - 2 * 86_400_000, now, 'tr'), '2 gün önce');
+  assert.equal(formatRelativeTime(0, now, 'tr'), '');
+});
+
+test('every string is translated into both languages', () => {
+  const keys = Object.keys(STRINGS.en) as (keyof typeof STRINGS.en)[];
+
+  for (const key of keys) {
+    const english = STRINGS.en[key];
+    const turkish = STRINGS.tr[key];
+
+    assert.equal(typeof turkish, typeof english, `${key} has a different shape in Turkish`);
+    if (typeof english === 'string') {
+      assert.ok(turkish, `${key} is empty in Turkish`);
+    } else if (typeof english === 'object') {
+      assert.deepEqual(
+        Object.keys(turkish as object).sort(),
+        Object.keys(english as object).sort(),
+        `${key} is missing options in Turkish`,
+      );
+    }
+  }
+});
+
+test('resolveLanguage honours an explicit choice over the device locale', () => {
+  assert.equal(resolveLanguage('tr'), 'tr');
+  assert.equal(resolveLanguage('en'), 'en');
+  assert.ok(['tr', 'en'].includes(resolveLanguage('system')), 'system resolves to a supported language');
+});
+
+test('filterSources narrows by region and language together', () => {
+  const sources: NewsSource[] = [
+    { ...source('trt', 'turkey'), language: 'tr' },
+    { ...source('bbc-turkce', 'turkey'), language: 'tr' },
+    { ...source('bbc-world', 'world'), language: 'en' },
+    { ...source('dw-turkce', 'world'), language: 'tr' },
+  ];
+
+  assert.equal(filterSources(sources, { region: 'all', language: 'all' }).length, 4);
+  assert.equal(filterSources(sources, { region: 'turkey', language: 'all' }).length, 2);
+  assert.equal(filterSources(sources, { region: 'all', language: 'tr' }).length, 3);
+  assert.equal(filterSources(sources, { region: 'world', language: 'tr' })[0].id, 'dw-turkce');
+  assert.deepEqual(
+    filterSources(sources, { region: 'turkey', language: 'en' }),
+    [],
+    'a combination nothing matches yields an empty list rather than falling back',
+  );
 });
 
 test('stripHtml removes scripts and decodes entities', () => {

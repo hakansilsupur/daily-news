@@ -1,4 +1,4 @@
-import type { NewsSource, Region } from '../types';
+import type { LanguageFilter, NewsSource, Region, RegionFilter } from '../types';
 
 /**
  * Built-in feeds. Everything here is a public RSS/Atom endpoint, so no API keys
@@ -186,19 +186,25 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   },
 ];
 
-export const REGION_LABELS: Record<Region, string> = {
-  turkey: 'Türkiye',
-  world: 'Worldwide',
-};
-
-export const CATEGORY_LABELS: Record<NewsSource['category'], string> = {
-  general: 'General',
-  agency: 'Agency',
-  business: 'Business',
-  technology: 'Technology',
-  sports: 'Sports',
-};
-
 export function sourcesByRegion(sources: NewsSource[], region: Region): NewsSource[] {
   return sources.filter((source) => source.region === region);
+}
+
+/**
+ * The sources a given region + language filter selects. `all` on either axis
+ * means "do not narrow on it", so `{ region: 'all', language: 'all' }` is
+ * everything. Both filters apply together: Türkiye + English is BBC News
+ * Türkçe's region-mates that publish in English, which may well be empty — the
+ * feed screen reports that as "no sources selected" rather than silently
+ * widening the filter.
+ */
+export function filterSources(
+  sources: NewsSource[],
+  filters: { region: RegionFilter; language: LanguageFilter },
+): NewsSource[] {
+  return sources.filter(
+    (source) =>
+      (filters.region === 'all' || source.region === filters.region) &&
+      (filters.language === 'all' || source.language === filters.language),
+  );
 }

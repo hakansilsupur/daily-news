@@ -1,5 +1,14 @@
 export type Region = 'turkey' | 'world';
 
+/** Language a source publishes in. */
+export type SourceLanguage = 'tr' | 'en';
+
+/** Languages the interface itself is translated into. */
+export type UiLanguage = 'tr' | 'en';
+
+/** What the user picked; `system` follows the device locale. */
+export type UiLanguagePreference = UiLanguage | 'system';
+
 export type SourceCategory =
   | 'general'
   | 'agency'
@@ -14,8 +23,8 @@ export interface NewsSource {
   region: Region;
   category: SourceCategory;
   feedUrl: string;
-  /** Two-letter language tag, used only for display. */
-  language: string;
+  /** Publishing language — shown in the sources sheet and driving the language filter. */
+  language: SourceLanguage;
   /** True for feeds the user added themselves. */
   custom?: boolean;
 }
@@ -41,3 +50,5 @@ export interface FeedResult {
 }
 
 export type RegionFilter = Region | 'all';
+
+export type LanguageFilter = SourceLanguage | 'all';
