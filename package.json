@@ -24,6 +24,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "prebuild:android": "expo prebuild --platform android --clean --no-install",
+    "build:apk": "bash scripts/build-apk.sh",
+    "build:apk:eas": "eas build --platform android --profile preview",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/feed.test.mts",
     "check-feeds": "tsx scripts/check-feeds.mts"

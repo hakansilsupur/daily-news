@@ -41,7 +41,57 @@ npm run web          # run in a browser
 npm run typecheck    # tsc --noEmit
 npm test             # unit tests for the feed parser and merge/search logic
 npm run check-feeds  # live health check of every built-in feed URL
+npm run build:apk    # build an installable Android APK (see below)
 ```
+
+## Building an APK
+
+Three ways to get an installable Android package, from least to most setup.
+
+### 1. GitHub Actions (nothing to install)
+
+The **Build Android APK** workflow (`.github/workflows/build-apk.yml`) runs
+`expo prebuild` + Gradle on GitHub's runners and uploads the APK as a build
+artifact. Trigger it from the Actions tab (pick `release` or `debug`), or push a
+`v*` tag. Download the artifact, unzip, and `adb install -r local-news-release.apk`.
+
+### 2. Locally with the Android SDK
+
+```bash
+npm run build:apk          # release APK  -> build/local-news-release.apk
+npm run build:apk -- debug # debug APK    -> build/local-news-debug.apk
+```
+
+Needs JDK 17+ and the Android SDK on the machine (`ANDROID_HOME` or
+`ANDROID_SDK_ROOT` set — installing Android Studio is the easy route). The
+script regenerates the native `android/` project from `app.json` each run, so
+never hand-edit that folder: it is gitignored and gets wiped by `--clean`.
+
+### 3. EAS Build (cloud, managed signing)
+
+```bash
+npm install -g eas-cli
+eas login
+eas build:configure
+npm run build:apk:eas      # eas build --platform android --profile preview
+```
+
+`eas.json` defines four profiles:
+
+| profile          | output | use for                                   |
+| ---------------- | ------ | ----------------------------------------- |
+| `development`    | APK    | dev client with the debug menu            |
+| `preview`        | APK    | internal testing / sideloading            |
+| `production`     | AAB    | Google Play uploads                       |
+| `production-apk` | APK    | production build to distribute yourself   |
+
+### A note on signing
+
+Options 1 and 2 sign the release APK with the debug keystore that
+`expo prebuild` generates. That is fine for sideloading and internal testing,
+but Google Play will reject it — for a store upload use `eas build --profile
+production`, which manages a real upload keystore for you, or wire your own
+keystore into `android/app/build.gradle` after prebuild.
 
 ### `npm run check-feeds`
 

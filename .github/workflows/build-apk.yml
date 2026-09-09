@@ -1,0 +1,68 @@
+name: Build Android APK
+
+# Produces a sideloadable APK on GitHub's runners (no EAS account needed).
+# Run it from the Actions tab, or push a v* tag.
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Gradle build variant
+        type: choice
+        options: [release, debug]
+        default: release
+  push:
+    tags: ['v*']
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VARIANT: ${{ inputs.variant || 'release' }}
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Generate the native Android project
+        # android/ is gitignored; prebuild recreates it from app.json.
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Build the APK
+        run: |
+          cd android
+          variant="$VARIANT"
+          ./gradlew ":app:assemble${variant^}" --no-daemon
+
+      - name: Collect the APK
+        id: collect
+        run: |
+          apk=$(find "android/app/build/outputs/apk/$VARIANT" -name '*.apk' -print -quit)
+          test -n "$apk" || { echo "no APK produced"; exit 1; }
+          mkdir -p build
+          cp "$apk" "build/local-news-$VARIANT.apk"
+          echo "path=build/local-news-$VARIANT.apk" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: local-news-${{ env.VARIANT }}-apk
+          path: ${{ steps.collect.outputs.path }}
+          if-no-files-found: error
