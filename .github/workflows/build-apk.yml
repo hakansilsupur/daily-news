@@ -12,6 +12,10 @@ on:
         default: release
   push:
     tags: ['v*']
+    # Also build on pushes to the APK branch, so the workflow can run before it
+    # is merged into the default branch (workflow_dispatch only appears in the
+    # UI once the file is on the default branch).
+    branches: ['claude/build-apk-*']
 
 jobs:
   apk:
