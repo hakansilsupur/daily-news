@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { BUILT_IN_SOURCES, filterSources } from '../data/sources';
-import { resolveLanguage, stringsFor, type AddSourceError, type Strings } from '../i18n';
+import { ALL_TAB_ID, pruneTab, sourcesForTab } from '../data/tabs';
+import {
+  resolveLanguage,
+  stringsFor,
+  type AddSourceError,
+  type FeedTabError,
+  type Strings,
+} from '../i18n';
 import { fetchAllFeeds, mergeAndSort, searchArticles } from '../services/newsService';
 import * as prefs from '../storage/prefs';
 import type {
   Article,
+  FeedTab,
   LanguageFilter,
   NewsSource,
   RegionFilter,
@@ -27,6 +35,16 @@ export interface NewsApp {
   /** Sources actually fetched: matching the filters and switched on. */
   activeSources: NewsSource[];
   enabledIds: string[] | null;
+
+  /** Pinned tabs the user created; the built-in "all" tab is not in here. */
+  feedTabs: FeedTab[];
+  selectedTabId: string;
+  /** The pinned tab in view, or null while the built-in "all" tab is selected. */
+  selectedTab: FeedTab | null;
+  selectTab: (id: string) => void;
+  /** Returns an error code for the caller to translate, or null on success. */
+  saveFeedTab: (input: { id?: string; name: string; sourceIds: string[] }) => FeedTabError | null;
+  removeFeedTab: (id: string) => void;
 
   region: RegionFilter;
   setRegion: (region: RegionFilter) => void;
@@ -71,6 +89,8 @@ export function useNewsApp(): NewsApp {
   const [ready, setReady] = useState(false);
   const [region, setRegionState] = useState<RegionFilter>('all');
   const [languageFilter, setLanguageFilterState] = useState<LanguageFilter>('all');
+  const [feedTabs, setFeedTabs] = useState<FeedTab[]>([]);
+  const [selectedTabId, setSelectedTabId] = useState<string>(ALL_TAB_ID);
   const [uiLanguagePreference, setUiLanguagePreferenceState] = useState<UiLanguagePreference>('system');
   const [enabledIds, setEnabledIds] = useState<string[] | null>(null);
   const [customSources, setCustomSources] = useState<NewsSource[]>([]);
@@ -91,15 +111,25 @@ export function useNewsApp(): NewsApp {
     let cancelled = false;
 
     (async () => {
-      const [storedRegion, storedEnabled, storedCustom, storedSaved, storedUiLanguage, storedLanguageFilter] =
-        await Promise.all([
-          prefs.loadRegion(),
-          prefs.loadEnabledSourceIds(),
-          prefs.loadCustomSources(),
-          prefs.loadSavedArticles(),
-          prefs.loadUiLanguage(),
-          prefs.loadLanguageFilter(),
-        ]);
+      const [
+        storedRegion,
+        storedEnabled,
+        storedCustom,
+        storedSaved,
+        storedUiLanguage,
+        storedLanguageFilter,
+        storedTabs,
+        storedSelectedTab,
+      ] = await Promise.all([
+        prefs.loadRegion(),
+        prefs.loadEnabledSourceIds(),
+        prefs.loadCustomSources(),
+        prefs.loadSavedArticles(),
+        prefs.loadUiLanguage(),
+        prefs.loadLanguageFilter(),
+        prefs.loadFeedTabs(),
+        prefs.loadSelectedTab(),
+      ]);
 
       if (cancelled) return;
       setRegionState(storedRegion);
@@ -108,6 +138,13 @@ export function useNewsApp(): NewsApp {
       setSavedArticles(storedSaved);
       setUiLanguagePreferenceState(storedUiLanguage);
       setLanguageFilterState(storedLanguageFilter);
+      setFeedTabs(storedTabs);
+      // A tab deleted on a previous run must not leave the feed pointing at nothing.
+      setSelectedTabId(
+        storedSelectedTab === ALL_TAB_ID || storedTabs.some((tab) => tab.id === storedSelectedTab)
+          ? storedSelectedTab
+          : ALL_TAB_ID,
+      );
       setReady(true);
     })();
 
@@ -131,9 +168,14 @@ export function useNewsApp(): NewsApp {
     [allSources, region, languageFilter],
   );
 
+  const selectedTab = useMemo(
+    () => feedTabs.find((tab) => tab.id === selectedTabId) ?? null,
+    [feedTabs, selectedTabId],
+  );
+
   const activeSources = useMemo(
-    () => regionSources.filter((source) => isSourceEnabled(source.id)),
-    [regionSources, isSourceEnabled],
+    () => sourcesForTab(allSources, selectedTab, { region, language: languageFilter, isEnabled: isSourceEnabled }),
+    [allSources, selectedTab, region, languageFilter, isSourceEnabled],
   );
 
   // Refetch whenever the effective source set changes, keyed on ids so that a
@@ -193,6 +235,45 @@ export function useNewsApp(): NewsApp {
     setUiLanguagePreferenceState(next);
     void prefs.saveUiLanguage(next);
   }, []);
+
+  const commitTabs = useCallback((tabs: FeedTab[]) => {
+    setFeedTabs(tabs);
+    void prefs.saveFeedTabs(tabs);
+  }, []);
+
+  const selectTab = useCallback((id: string) => {
+    setSelectedTabId(id);
+    void prefs.saveSelectedTab(id);
+  }, []);
+
+  const saveFeedTab = useCallback<NewsApp['saveFeedTab']>(
+    ({ id, name, sourceIds }) => {
+      const trimmedName = name.trim();
+      if (!trimmedName) return 'name-required';
+      if (sourceIds.length === 0) return 'no-sources';
+
+      if (id) {
+        commitTabs(
+          feedTabs.map((tab) => (tab.id === id ? { ...tab, name: trimmedName, sourceIds } : tab)),
+        );
+        return null;
+      }
+
+      const created: FeedTab = { id: `tab:${Date.now()}`, name: trimmedName, sourceIds };
+      commitTabs([...feedTabs, created]);
+      selectTab(created.id);
+      return null;
+    },
+    [feedTabs, commitTabs, selectTab],
+  );
+
+  const removeFeedTab = useCallback(
+    (id: string) => {
+      commitTabs(feedTabs.filter((tab) => tab.id !== id));
+      if (selectedTabId === id) selectTab(ALL_TAB_ID);
+    },
+    [feedTabs, commitTabs, selectedTabId, selectTab],
+  );
 
   const uiLanguage = useMemo(() => resolveLanguage(uiLanguagePreference), [uiLanguagePreference]);
   const t = useMemo(() => stringsFor(uiLanguage), [uiLanguage]);
@@ -258,10 +339,18 @@ export function useNewsApp(): NewsApp {
 
   const removeCustomSource = useCallback(
     (id: string) => {
-      commitCustom(customSources.filter((source) => source.id !== id));
+      const remaining = customSources.filter((source) => source.id !== id);
+      commitCustom(remaining);
       if (enabledIds) commitEnabled(enabledIds.filter((item) => item !== id));
+
+      // Pinned tabs must not keep pointing at a feed that no longer exists.
+      const stillAround = [...BUILT_IN_SOURCES, ...remaining];
+      const pruned = feedTabs.map((tab) => pruneTab(tab, stillAround));
+      if (pruned.some((tab, index) => tab.sourceIds.length !== feedTabs[index].sourceIds.length)) {
+        commitTabs(pruned);
+      }
     },
-    [customSources, commitCustom, enabledIds, commitEnabled],
+    [customSources, commitCustom, enabledIds, commitEnabled, feedTabs, commitTabs],
   );
 
   const savedIds = useMemo(
@@ -299,6 +388,12 @@ export function useNewsApp(): NewsApp {
     regionSources,
     activeSources,
     enabledIds,
+    feedTabs,
+    selectedTabId,
+    selectedTab,
+    selectTab,
+    saveFeedTab,
+    removeFeedTab,
     region,
     setRegion,
     languageFilter,

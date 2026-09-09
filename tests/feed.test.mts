@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { filterSources } from '../src/data/sources';
+import { pruneTab, sourcesForTab } from '../src/data/tabs';
 import { resolveLanguage, STRINGS } from '../src/i18n';
 import {
   formatRelativeTime,
@@ -187,6 +188,68 @@ test('filterSources narrows by region and language together', () => {
     [],
     'a combination nothing matches yields an empty list rather than falling back',
   );
+});
+
+test('the All tab answers to the ad-hoc filters', () => {
+  const sources: NewsSource[] = [
+    { ...source('trt', 'turkey'), language: 'tr' },
+    { ...source('bbc', 'world'), language: 'en' },
+    { ...source('dw-tr', 'world'), language: 'tr' },
+  ];
+  const allOn = () => true;
+
+  assert.equal(
+    sourcesForTab(sources, null, { region: 'all', language: 'all', isEnabled: allOn }).length,
+    3,
+  );
+  assert.equal(
+    sourcesForTab(sources, null, { region: 'world', language: 'tr', isEnabled: allOn })[0].id,
+    'dw-tr',
+  );
+  assert.deepEqual(
+    sourcesForTab(sources, null, {
+      region: 'all',
+      language: 'all',
+      isEnabled: (id) => id !== 'bbc',
+    }).map((s) => s.id),
+    ['trt', 'dw-tr'],
+    'switched-off sources stay out of the All tab',
+  );
+});
+
+test('a pinned tab is an explicit list, immune to the ad-hoc filters', () => {
+  const sources: NewsSource[] = [
+    { ...source('trt', 'turkey'), language: 'tr' },
+    { ...source('bbc', 'world'), language: 'en' },
+    { ...source('dw-tr', 'world'), language: 'tr' },
+  ];
+  const tab = { id: 'tab:1', name: 'Karışık', sourceIds: ['bbc', 'trt'] };
+
+  const picked = sourcesForTab(sources, tab, {
+    region: 'turkey',
+    language: 'tr',
+    isEnabled: () => false,
+  });
+
+  assert.deepEqual(
+    picked.map((s) => s.id),
+    ['bbc', 'trt'],
+    'neither the region/language filters nor the source switches narrow a pinned tab',
+  );
+});
+
+test('a pinned tab drops sources that no longer exist', () => {
+  const sources: NewsSource[] = [{ ...source('trt', 'turkey'), language: 'tr' }];
+  const tab = { id: 'tab:1', name: 'Eski', sourceIds: ['trt', 'custom:999'] };
+
+  assert.deepEqual(
+    sourcesForTab(sources, tab, { region: 'all', language: 'all', isEnabled: () => true }).map(
+      (s) => s.id,
+    ),
+    ['trt'],
+    'a deleted feed leaves no hole in the tab',
+  );
+  assert.deepEqual(pruneTab(tab, sources).sourceIds, ['trt']);
 });
 
 test('stripHtml removes scripts and decodes entities', () => {

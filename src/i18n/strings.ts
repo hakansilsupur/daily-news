@@ -3,6 +3,9 @@ import type { LanguageFilter, Region, RegionFilter, SourceCategory, UiLanguage, 
 /** Reasons `addCustomSource` can reject a feed, mapped to text per language. */
 export type AddSourceError = 'name-required' | 'invalid-url' | 'duplicate';
 
+/** Reasons a pinned tab cannot be saved. */
+export type FeedTabError = 'name-required' | 'no-sources';
+
 /**
  * Every user-visible string in the app. Keeping it one flat interface means a
  * missing or misspelled translation is a type error, not a blank label.
@@ -48,6 +51,24 @@ export interface Strings {
   feedUrlPlaceholder: string;
   addSource: string;
   addSourceError: Record<AddSourceError, string>;
+
+  allTab: string;
+  addTab: string;
+  newTabTitle: string;
+  editTabTitle: string;
+  tabNamePlaceholder: string;
+  tabPickSources: string;
+  tabSelectedCount: (count: number) => string;
+  saveTab: string;
+  deleteTab: string;
+  deleteTabConfirm: (name: string) => string;
+  cancel: string;
+  delete: string;
+  editTabHint: string;
+  emptyTabTitle: string;
+  emptyTabMessage: string;
+  editTabAction: string;
+  feedTabError: Record<FeedTabError, string>;
 
   languageGroup: string;
   interfaceLanguage: string;
@@ -109,6 +130,27 @@ const en: Strings = {
     'name-required': 'Give the source a name.',
     'invalid-url': 'Enter a full feed URL starting with http(s)://.',
     duplicate: 'That feed is already in your list.',
+  },
+
+  allTab: 'All',
+  addTab: 'Add',
+  newTabTitle: 'New tab',
+  editTabTitle: 'Edit tab',
+  tabNamePlaceholder: 'Tab name — e.g. Science',
+  tabPickSources: 'SOURCES IN THIS TAB',
+  tabSelectedCount: (count) => (count === 1 ? '1 source selected' : `${count} sources selected`),
+  saveTab: 'Save tab',
+  deleteTab: 'Delete tab',
+  deleteTabConfirm: (name) => `Delete “${name}”? The sources themselves stay.`,
+  cancel: 'Cancel',
+  delete: 'Delete',
+  editTabHint: 'Long-press a tab to edit or delete it.',
+  emptyTabTitle: 'This tab is empty',
+  emptyTabMessage: 'Every source pinned to this tab is gone. Edit it to pick new ones.',
+  editTabAction: 'Edit tab',
+  feedTabError: {
+    'name-required': 'Give the tab a name.',
+    'no-sources': 'Pick at least one source.',
   },
 
   languageGroup: 'LANGUAGE',
@@ -190,6 +232,27 @@ const tr: Strings = {
     'name-required': 'Kaynağa bir ad verin.',
     'invalid-url': 'http(s):// ile başlayan tam bir akış adresi girin.',
     duplicate: 'Bu akış zaten listenizde.',
+  },
+
+  allTab: 'Tümü',
+  addTab: 'Ekle',
+  newTabTitle: 'Yeni sekme',
+  editTabTitle: 'Sekmeyi düzenle',
+  tabNamePlaceholder: 'Sekme adı — örn. Bilim',
+  tabPickSources: 'BU SEKMEDEKİ KAYNAKLAR',
+  tabSelectedCount: (count) => `${count} kaynak seçildi`,
+  saveTab: 'Sekmeyi kaydet',
+  deleteTab: 'Sekmeyi sil',
+  deleteTabConfirm: (name) => `“${name}” silinsin mi? Kaynaklar listenizde kalır.`,
+  cancel: 'Vazgeç',
+  delete: 'Sil',
+  editTabHint: 'Düzenlemek veya silmek için sekmeye uzun basın.',
+  emptyTabTitle: 'Bu sekme boş',
+  emptyTabMessage: 'Bu sekmeye eklenen kaynaklar kalmamış. Düzenleyip yeniden seçin.',
+  editTabAction: 'Sekmeyi düzenle',
+  feedTabError: {
+    'name-required': 'Sekmeye bir ad verin.',
+    'no-sources': 'En az bir kaynak seçin.',
   },
 
   languageGroup: 'DİL',

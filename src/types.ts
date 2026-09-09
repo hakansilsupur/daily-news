@@ -43,6 +43,18 @@ export interface Article {
   region: Region;
 }
 
+/**
+ * A pinned tab across the top of the feed: a named, fixed set of sources the
+ * user assembled, in the spirit of a pinned list on X. The built-in `all` tab
+ * is not stored as one of these — it is the ad-hoc view driven by the region,
+ * language and per-source toggles.
+ */
+export interface FeedTab {
+  id: string;
+  name: string;
+  sourceIds: string[];
+}
+
 export interface FeedResult {
   sourceId: string;
   articles: Article[];

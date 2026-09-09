@@ -3,12 +3,14 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FeedTabSheet } from './src/components/FeedTabSheet';
 import { SourceFilterSheet } from './src/components/SourceFilterSheet';
 import { TabBar, type TabKey } from './src/components/TabBar';
 import { useNewsApp } from './src/hooks/useNewsApp';
 import { FeedScreen } from './src/screens/FeedScreen';
 import { SavedScreen } from './src/screens/SavedScreen';
 import { useTheme } from './src/theme';
+import type { FeedTab } from './src/types';
 
 function AppShell() {
   const theme = useTheme();
@@ -17,6 +19,8 @@ function AppShell() {
 
   const [tab, setTab] = useState<TabKey>('feed');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // undefined = closed, null = creating a tab, a FeedTab = editing that one.
+  const [tabEditor, setTabEditor] = useState<FeedTab | null | undefined>(undefined);
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background, paddingTop: insets.top }]}>
@@ -28,7 +32,13 @@ function AppShell() {
             <ActivityIndicator color={theme.accent} />
           </View>
         ) : tab === 'feed' ? (
-          <FeedScreen app={app} theme={theme} onOpenFilters={() => setFiltersOpen(true)} />
+          <FeedScreen
+            app={app}
+            theme={theme}
+            onOpenFilters={() => setFiltersOpen(true)}
+            onAddTab={() => setTabEditor(null)}
+            onEditTab={setTabEditor}
+          />
         ) : (
           <SavedScreen app={app} theme={theme} />
         )}
@@ -46,6 +56,13 @@ function AppShell() {
       <SourceFilterSheet
         visible={filtersOpen}
         onClose={() => setFiltersOpen(false)}
+        theme={theme}
+        app={app}
+      />
+
+      <FeedTabSheet
+        tab={tabEditor}
+        onClose={() => setTabEditor(undefined)}
         theme={theme}
         app={app}
       />

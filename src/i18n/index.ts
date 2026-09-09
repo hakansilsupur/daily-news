@@ -3,7 +3,7 @@ import type { UiLanguage, UiLanguagePreference } from '../types';
 
 export { STRINGS };
 export type { Strings };
-export type { AddSourceError } from './strings';
+export type { AddSourceError, FeedTabError } from './strings';
 
 export const UI_LANGUAGES: UiLanguage[] = ['tr', 'en'];
 export const UI_LANGUAGE_PREFERENCES: UiLanguagePreference[] = ['system', 'tr', 'en'];

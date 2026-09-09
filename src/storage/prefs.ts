@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { ALL_TAB_ID } from '../data/tabs';
 import type {
   Article,
+  FeedTab,
   LanguageFilter,
   NewsSource,
   RegionFilter,
@@ -15,6 +17,8 @@ const KEYS = {
   saved: 'prefs:savedArticles',
   uiLanguage: 'prefs:uiLanguage',
   languageFilter: 'prefs:languageFilter',
+  feedTabs: 'prefs:feedTabs',
+  selectedTab: 'prefs:selectedTab',
 } as const;
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -58,3 +62,9 @@ export const saveUiLanguage = (preference: UiLanguagePreference) =>
 
 export const loadLanguageFilter = () => readJson<LanguageFilter>(KEYS.languageFilter, 'all');
 export const saveLanguageFilter = (filter: LanguageFilter) => writeJson(KEYS.languageFilter, filter);
+
+export const loadFeedTabs = () => readJson<FeedTab[]>(KEYS.feedTabs, []);
+export const saveFeedTabs = (tabs: FeedTab[]) => writeJson(KEYS.feedTabs, tabs);
+
+export const loadSelectedTab = () => readJson<string>(KEYS.selectedTab, ALL_TAB_ID);
+export const saveSelectedTab = (id: string) => writeJson(KEYS.selectedTab, id);

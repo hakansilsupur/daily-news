@@ -13,22 +13,25 @@ import {
 
 import { ArticleCard } from '../components/ArticleCard';
 import { EmptyState } from '../components/EmptyState';
+import { FeedTabStrip } from '../components/FeedTabStrip';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { SourceChips } from '../components/SourceChips';
 import type { NewsApp } from '../hooks/useNewsApp';
 import { formatRelativeTime } from '../services/newsService';
 import { openArticle } from '../services/openArticle';
 import type { Theme } from '../theme';
-import type { Article, LanguageFilter, RegionFilter } from '../types';
+import type { Article, FeedTab, LanguageFilter, RegionFilter } from '../types';
 
 interface Props {
   app: NewsApp;
   theme: Theme;
   onOpenFilters: () => void;
+  onAddTab: () => void;
+  onEditTab: (tab: FeedTab) => void;
 }
 
-export function FeedScreen({ app, theme, onOpenFilters }: Props) {
-  const { t } = app;
+export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: Props) {
+  const { t, selectedTab } = app;
   const failedCount = Object.keys(app.errors).length;
 
   const regionOptions: { value: RegionFilter; label: string }[] = [
@@ -62,9 +65,13 @@ export function FeedScreen({ app, theme, onOpenFilters }: Props) {
     <View style={styles.headerBlock}>
       <View style={styles.titleRow}>
         <View>
-          <Text style={[styles.title, { color: theme.text }]}>{t.feedTitle}</Text>
+          <Text style={[styles.title, { color: theme.text }]}>
+            {selectedTab ? selectedTab.name : t.feedTitle}
+          </Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            {t.sourceCount(app.activeSources.length, app.regionSources.length)}
+            {selectedTab
+              ? t.tabSelectedCount(app.activeSources.length)
+              : t.sourceCount(app.activeSources.length, app.regionSources.length)}
             {app.lastUpdated
               ? t.updatedSuffix(formatRelativeTime(app.lastUpdated, Date.now(), app.uiLanguage))
               : ''}
@@ -98,27 +105,43 @@ export function FeedScreen({ app, theme, onOpenFilters }: Props) {
         ) : null}
       </View>
 
-      <SegmentedControl
+      <FeedTabStrip
         theme={theme}
-        options={regionOptions}
-        value={app.region}
-        onChange={app.setRegion}
+        strings={t}
+        tabs={app.feedTabs}
+        selectedId={app.selectedTabId}
+        onSelect={app.selectTab}
+        onEdit={onEditTab}
+        onAdd={onAddTab}
       />
 
-      <SegmentedControl
-        theme={theme}
-        options={languageOptions}
-        value={app.languageFilter}
-        onChange={app.setLanguageFilter}
-        compact
-      />
+      {/* A pinned tab is its own fixed selection, so the ad-hoc filters below
+          would only contradict it — they belong to the "All" tab alone. */}
+      {selectedTab ? null : (
+        <>
+          <SegmentedControl
+            theme={theme}
+            options={regionOptions}
+            value={app.region}
+            onChange={app.setRegion}
+          />
 
-      <SourceChips
-        theme={theme}
-        sources={app.regionSources}
-        isEnabled={app.isSourceEnabled}
-        onToggle={app.toggleSource}
-      />
+          <SegmentedControl
+            theme={theme}
+            options={languageOptions}
+            value={app.languageFilter}
+            onChange={app.setLanguageFilter}
+            compact
+          />
+
+          <SourceChips
+            theme={theme}
+            sources={app.regionSources}
+            isEnabled={app.isSourceEnabled}
+            onToggle={app.toggleSource}
+          />
+        </>
+      )}
 
       {failedCount > 0 ? (
         <Text style={[styles.warning, { color: theme.danger }]}>
@@ -139,7 +162,16 @@ export function FeedScreen({ app, theme, onOpenFilters }: Props) {
     }
 
     if (app.activeSources.length === 0) {
-      return (
+      return selectedTab ? (
+        <EmptyState
+          theme={theme}
+          icon="albums-outline"
+          title={t.emptyTabTitle}
+          message={t.emptyTabMessage}
+          actionLabel={t.editTabAction}
+          onAction={() => onEditTab(selectedTab)}
+        />
+      ) : (
         <EmptyState
           theme={theme}
           icon="funnel-outline"

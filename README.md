@@ -9,6 +9,10 @@ Built with Expo (SDK 57) + React Native + TypeScript.
 
 ## Features
 
+- **Pinned tabs** — a row of tabs across the top of the feed, like pinned lists
+  on X. `All` is always first; `Add +` opens a sheet where you name a tab and
+  tick the sources it holds. Long-press a tab to edit or delete it. The choice
+  of tab persists between launches.
 - **Two interface languages** — Türkçe and English, switched in the Sources sheet
   under `Dil / Language`. `System` follows the device locale. The choice is
   persisted and also drives relative timestamps (`2 saat önce` / `2h ago`).
@@ -129,13 +133,14 @@ src/
     strings.ts              every UI string, in Turkish and English
     index.ts                locale detection and language resolution
   data/sources.ts           built-in feeds, tagged by region, category, language
+  data/tabs.ts              which sources a pinned tab (or the All tab) resolves to
   services/
     rss.ts                  fetch + parse RSS 2.0 / RSS 1.0 (RDF) / Atom
     newsService.ts          parallel fetch, dedupe, sort, search, timestamps
     openArticle.ts          in-app browser with system-browser fallback
-  storage/prefs.ts          AsyncStorage persistence (filters, language, feeds, saves)
+  storage/prefs.ts          AsyncStorage persistence (filters, language, tabs, feeds, saves)
   hooks/useNewsApp.ts       all app state in one hook
-  components/               ArticleCard, SegmentedControl, SourceChips, TabBar, …
+  components/               ArticleCard, FeedTabStrip, SegmentedControl, TabBar, …
   screens/                  FeedScreen, SavedScreen
 tests/feed.test.mts         parser + merge/search/format unit tests
 scripts/check-feeds.mts     live feed health check
@@ -162,6 +167,21 @@ missing key is a compile error rather than a blank label, and a unit test
 asserts both tables have the same shape. `detectSystemLanguage()` reads the
 device locale from `Intl` — no native module, so no rebuild is needed to change
 languages at runtime.
+
+## Tabs vs. filters
+
+The two coexist by staying out of each other's way, which `src/data/tabs.ts`
+enforces in one function:
+
+- **The `All` tab** is the ad-hoc view. The region filter, the language filter
+  and the per-source switches all apply to it, and it is the only tab that shows
+  those controls.
+- **A pinned tab** is an explicit list of sources, so it deliberately ignores
+  all three — otherwise a filter set on `All` would quietly empty out a tab you
+  pinned. Its sources are exactly what you ticked, in that order.
+
+Deleting a custom feed prunes it out of every tab that referenced it, so a tab
+can never point at a source that no longer exists.
 
 ## How fetching works
 
