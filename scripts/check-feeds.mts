@@ -7,6 +7,7 @@
  * publisher that has moved or retired its RSS endpoint is easy to spot. Run it
  * from a machine with unrestricted outbound network access.
  */
+import { SOURCE_CATALOG } from '../src/data/catalog';
 import { BUILT_IN_SOURCES } from '../src/data/sources';
 import { parseFeed } from '../src/services/rss';
 import type { NewsSource } from '../src/types';
@@ -42,9 +43,24 @@ async function check(source: NewsSource): Promise<string> {
   }
 }
 
-const lines = await Promise.all(BUILT_IN_SOURCES.map(check));
-for (const line of lines) console.log(line);
+// The directory shown in the Add source sheet needs checking just as much as
+// the built-in list — a dead entry there is a source the user cannot add.
+const everything: NewsSource[] = [
+  ...BUILT_IN_SOURCES,
+  ...SOURCE_CATALOG.map((entry) => ({ ...entry, id: entry.id.replace(/^cat:/, '') })),
+];
 
+console.log('--- built-in sources ---');
+const builtInLines = await Promise.all(BUILT_IN_SOURCES.map(check));
+for (const line of builtInLines) console.log(line);
+
+console.log('\n--- source directory ---');
+const catalogLines = await Promise.all(
+  everything.slice(BUILT_IN_SOURCES.length).map(check),
+);
+for (const line of catalogLines) console.log(line);
+
+const lines = [...builtInLines, ...catalogLines];
 const failures = lines.filter((line) => !line.includes(' OK    ')).length;
-console.log(`\n${BUILT_IN_SOURCES.length - failures}/${BUILT_IN_SOURCES.length} feeds healthy.`);
+console.log(`\n${lines.length - failures}/${lines.length} feeds healthy.`);
 process.exitCode = failures > 0 ? 1 : 0;

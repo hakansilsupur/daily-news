@@ -151,6 +151,23 @@ export function parseFeed(xml: string, source: NewsSource): Article[] {
     .filter((article): article is Article => article !== null);
 }
 
+/** The feed's own title, used to name a source discovered from a site address. */
+export function parseFeedTitle(xml: string): string {
+  const doc = parser.parse(xml) as Record<string, unknown>;
+
+  const rss = doc.rss as Record<string, unknown> | undefined;
+  const channel = (rss?.channel ?? doc.channel) as Record<string, unknown> | undefined;
+  const rdf = (doc['rdf:RDF'] ?? doc.RDF) as Record<string, unknown> | undefined;
+  const feed = doc.feed as Record<string, unknown> | undefined;
+
+  const title =
+    text(channel?.title) ||
+    text((rdf?.channel as Record<string, unknown>)?.title) ||
+    text(feed?.title);
+
+  return stripHtml(title).slice(0, 60);
+}
+
 export async function fetchFeed(source: NewsSource, signal?: AbortSignal): Promise<Article[]> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);

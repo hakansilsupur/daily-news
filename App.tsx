@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AddSourceSheet } from './src/components/AddSourceSheet';
 import { FeedTabSheet } from './src/components/FeedTabSheet';
 import { SourceFilterSheet } from './src/components/SourceFilterSheet';
 import { TabBar, type TabKey } from './src/components/TabBar';
@@ -19,6 +20,7 @@ function AppShell() {
 
   const [tab, setTab] = useState<TabKey>('feed');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [findSourcesOpen, setFindSourcesOpen] = useState(false);
   // undefined = closed, null = creating a tab, a FeedTab = editing that one.
   const [tabEditor, setTabEditor] = useState<FeedTab | null | undefined>(undefined);
 
@@ -56,6 +58,14 @@ function AppShell() {
       <SourceFilterSheet
         visible={filtersOpen}
         onClose={() => setFiltersOpen(false)}
+        onFindSources={() => setFindSourcesOpen(true)}
+        theme={theme}
+        app={app}
+      />
+
+      <AddSourceSheet
+        visible={findSourcesOpen}
+        onClose={() => setFindSourcesOpen(false)}
         theme={theme}
         app={app}
       />

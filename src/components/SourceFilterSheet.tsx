@@ -23,11 +23,12 @@ import type { LanguageFilter, NewsSource, Region, UiLanguagePreference } from '.
 interface Props {
   visible: boolean;
   onClose: () => void;
+  onFindSources: () => void;
   theme: Theme;
   app: NewsApp;
 }
 
-export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
+export function SourceFilterSheet({ visible, onClose, onFindSources, theme, app }: Props) {
   const { t } = app;
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
@@ -175,6 +176,18 @@ export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
               <View style={styles.group}>
                 <Text style={[styles.groupTitle, { color: theme.textMuted }]}>{t.addFeedGroup}</Text>
 
+                <Pressable
+                  onPress={onFindSources}
+                  style={[styles.findButton, { borderColor: theme.accent, backgroundColor: theme.accentSoft }]}
+                >
+                  <Ionicons name="search" size={18} color={theme.accent} />
+                  <Text style={[styles.findButtonText, { color: theme.accent }]}>{t.findSources}</Text>
+                </Pressable>
+
+                <Text style={[styles.groupTitle, styles.manualTitle, { color: theme.textMuted }]}>
+                  {t.manualEntryGroup}
+                </Text>
+
                 <TextInput
                   value={name}
                   onChangeText={setName}
@@ -292,6 +305,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
+  },
+  findButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  findButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  manualTitle: {
+    marginTop: 8,
   },
   settingLabel: {
     fontSize: 13,

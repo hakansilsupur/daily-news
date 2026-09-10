@@ -14,6 +14,7 @@ export type SourceCategory =
   | 'agency'
   | 'business'
   | 'technology'
+  | 'science'
   | 'sports';
 
 export interface NewsSource {

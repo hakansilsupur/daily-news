@@ -17,6 +17,8 @@ import type {
   LanguageFilter,
   NewsSource,
   RegionFilter,
+  SourceCategory,
+  SourceLanguage,
   UiLanguage,
   UiLanguagePreference,
 } from '../types';
@@ -76,6 +78,9 @@ export interface NewsApp {
     name: string;
     feedUrl: string;
     region: 'turkey' | 'world';
+    /** Carried over when the source came from the directory; guessed otherwise. */
+    language?: SourceLanguage;
+    category?: SourceCategory;
   }) => AddSourceError | null;
   removeCustomSource: (id: string) => void;
 
@@ -312,7 +317,7 @@ export function useNewsApp(): NewsApp {
   }, []);
 
   const addCustomSource = useCallback<NewsApp['addCustomSource']>(
-    ({ name, feedUrl, region: sourceRegion }) => {
+    ({ name, feedUrl, region: sourceRegion, language, category }) => {
       const trimmedName = name.trim();
       const trimmedUrl = feedUrl.trim();
 
@@ -327,8 +332,8 @@ export function useNewsApp(): NewsApp {
           name: trimmedName,
           feedUrl: trimmedUrl,
           region: sourceRegion,
-          category: 'general',
-          language: sourceRegion === 'turkey' ? 'tr' : 'en',
+          category: category ?? 'general',
+          language: language ?? (sourceRegion === 'turkey' ? 'tr' : 'en'),
           custom: true,
         },
       ]);

@@ -52,6 +52,21 @@ export interface Strings {
   addSource: string;
   addSourceError: Record<AddSourceError, string>;
 
+  findSources: string;
+  findSourcesTitle: string;
+  findSourcesPlaceholder: string;
+  directoryGroup: string;
+  directoryEmpty: (query: string) => string;
+  searchSiteAction: (host: string) => string;
+  searching: string;
+  discoveredGroup: string;
+  discoveredEmpty: string;
+  discoveredError: string;
+  feedArticleCount: (count: number) => string;
+  addLabel: string;
+  addedLabel: string;
+  manualEntryGroup: string;
+
   allTab: string;
   addTab: string;
   newTabTitle: string;
@@ -132,6 +147,21 @@ const en: Strings = {
     duplicate: 'That feed is already in your list.',
   },
 
+  findSources: 'Find sources',
+  findSourcesTitle: 'Add a source',
+  findSourcesPlaceholder: 'Search sources, or paste a site address',
+  directoryGroup: 'SOURCE DIRECTORY',
+  directoryEmpty: (query) => `No source in the directory matches “${query}”.`,
+  searchSiteAction: (host) => `Search ${host} for feeds`,
+  searching: 'Looking for feeds…',
+  discoveredGroup: 'FOUND ON THAT SITE',
+  discoveredEmpty: 'No feed found at that address.',
+  discoveredError: 'Could not reach that address.',
+  feedArticleCount: (count) => (count === 1 ? '1 article' : `${count} articles`),
+  addLabel: 'Add',
+  addedLabel: 'Added',
+  manualEntryGroup: 'OR ENTER A FEED URL',
+
   allTab: 'All',
   addTab: 'Add',
   newTabTitle: 'New tab',
@@ -181,6 +211,7 @@ const en: Strings = {
     agency: 'Agency',
     business: 'Business',
     technology: 'Technology',
+    science: 'Science',
     sports: 'Sports',
   },
 
@@ -234,6 +265,21 @@ const tr: Strings = {
     duplicate: 'Bu akış zaten listenizde.',
   },
 
+  findSources: 'Kaynak ara',
+  findSourcesTitle: 'Kaynak ekle',
+  findSourcesPlaceholder: 'Kaynak ara ya da site adresi yapıştır',
+  directoryGroup: 'KAYNAK REHBERİ',
+  directoryEmpty: (query) => `Rehberde “${query}” ile eşleşen kaynak yok.`,
+  searchSiteAction: (host) => `${host} adresinde akış ara`,
+  searching: 'Akışlar aranıyor…',
+  discoveredGroup: 'BU SİTEDE BULUNANLAR',
+  discoveredEmpty: 'Bu adreste akış bulunamadı.',
+  discoveredError: 'Bu adrese ulaşılamadı.',
+  feedArticleCount: (count) => `${count} haber`,
+  addLabel: 'Ekle',
+  addedLabel: 'Eklendi',
+  manualEntryGroup: 'YA DA AKIŞ ADRESİ GİRİN',
+
   allTab: 'Tümü',
   addTab: 'Ekle',
   newTabTitle: 'Yeni sekme',
@@ -283,6 +329,7 @@ const tr: Strings = {
     agency: 'Ajans',
     business: 'Ekonomi',
     technology: 'Teknoloji',
+    science: 'Bilim',
     sports: 'Spor',
   },
 

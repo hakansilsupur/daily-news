@@ -1,15 +1,23 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { isAlreadyAdded, searchCatalog, type CatalogEntry } from '../src/data/catalog';
 import { filterSources } from '../src/data/sources';
 import { pruneTab, sourcesForTab } from '../src/data/tabs';
+import {
+  candidateUrls,
+  COMMON_FEED_PATHS,
+  extractFeedLinks,
+  looksLikeUrl,
+  normalizeSiteUrl,
+} from '../src/services/discovery';
 import { resolveLanguage, STRINGS } from '../src/i18n';
 import {
   formatRelativeTime,
   mergeAndSort,
   searchArticles,
 } from '../src/services/newsService';
-import { parseFeed, stripHtml } from '../src/services/rss';
+import { parseFeed, parseFeedTitle, stripHtml } from '../src/services/rss';
 import type { NewsSource, Region } from '../src/types';
 
 const source = (id: string, region: Region): NewsSource => ({
@@ -250,6 +258,78 @@ test('a pinned tab drops sources that no longer exist', () => {
     'a deleted feed leaves no hole in the tab',
   );
   assert.deepEqual(pruneTab(tab, sources).sourceIds, ['trt']);
+});
+
+test('directory search ranks name matches above keyword matches', () => {
+  const entries: CatalogEntry[] = [
+    { id: 'a', name: 'BBC Sport', region: 'world', category: 'sports', language: 'en', feedUrl: 'https://a.test/rss' },
+    { id: 'b', name: 'Sky Sports', region: 'world', category: 'sports', language: 'en', feedUrl: 'https://b.test/rss', keywords: ['bbc rival'] },
+    { id: 'c', name: 'NTV Spor', region: 'turkey', category: 'sports', language: 'tr', feedUrl: 'https://c.test/rss', keywords: ['spor'] },
+  ];
+
+  assert.deepEqual(searchCatalog(entries, 'bbc').map((e) => e.id), ['a', 'b']);
+  assert.deepEqual(searchCatalog(entries, 'sports', { region: 'world' }).map((e) => e.id), ['b', 'a']);
+  assert.deepEqual(searchCatalog(entries, 'SPOR', { region: 'turkey' }).map((e) => e.id), ['c']);
+  assert.equal(searchCatalog(entries, '', { region: 'all' }).length, 3, 'a blank query lists everything');
+  assert.equal(searchCatalog(entries, 'zzz').length, 0);
+});
+
+test('a source already in the list is flagged as added', () => {
+  const entry: CatalogEntry = {
+    id: 'a',
+    name: 'BBC Sport',
+    region: 'world',
+    category: 'sports',
+    language: 'en',
+    feedUrl: 'https://a.test/rss',
+  };
+  const mine: NewsSource[] = [{ ...source('mine', 'world'), feedUrl: 'https://a.test/rss' }];
+
+  assert.equal(isAlreadyAdded(entry, mine), true);
+  assert.equal(isAlreadyAdded(entry, []), false);
+});
+
+test('site addresses are told apart from search terms', () => {
+  assert.equal(looksLikeUrl('bbc.co.uk'), true);
+  assert.equal(looksLikeUrl('https://www.nature.com/nature.rss'), true);
+  assert.equal(looksLikeUrl('bbc sport'), false, 'a phrase is a search, not an address');
+  assert.equal(looksLikeUrl('Milliyet'), false, 'a bare word has no dot');
+  assert.equal(looksLikeUrl(''), false);
+
+  assert.equal(normalizeSiteUrl('bbc.co.uk'), 'https://bbc.co.uk/', 'a bare domain gets a scheme');
+  assert.equal(normalizeSiteUrl('http://x.test/feed'), 'http://x.test/feed');
+  assert.equal(normalizeSiteUrl('localhost'), null, 'no dot, no host');
+});
+
+test('feed links are read out of a page however the attributes are ordered', () => {
+  const html = `
+    <html><head>
+      <link rel="alternate" type="application/rss+xml" title="Main" href="/rss.xml">
+      <link type="application/atom+xml" rel="alternate" href="https://cdn.test/atom">
+      <link rel="alternate" type="text/html" href="/not-a-feed">
+      <link rel="stylesheet" href="/style.css">
+      <link rel="alternate" type="application/rss+xml" href="/rss.xml">
+    </head></html>`;
+
+  const links = extractFeedLinks(html, 'https://site.test/news');
+
+  assert.deepEqual(links, [
+    { url: 'https://site.test/rss.xml', title: 'Main' },
+    { url: 'https://cdn.test/atom', title: undefined },
+  ], 'relative hrefs resolve, non-feeds are skipped, duplicates collapse');
+});
+
+test('common feed paths are probed against the site root', () => {
+  const urls = candidateUrls('https://site.test/section/');
+
+  assert.ok(urls.includes('https://site.test/rss'));
+  assert.ok(urls.includes('https://site.test/feed.xml'));
+  assert.equal(urls.length, COMMON_FEED_PATHS.length);
+});
+
+test('parseFeedTitle names a discovered feed', () => {
+  assert.equal(parseFeedTitle(RSS_2), 'Test');
+  assert.equal(parseFeedTitle('<html><body>not a feed</body></html>'), '');
 });
 
 test('stripHtml removes scripts and decodes entities', () => {

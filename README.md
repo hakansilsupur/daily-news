@@ -22,8 +22,16 @@ Built with Expo (SDK 57) + React Native + TypeScript.
   interface language, so you can read an English UI over Turkish feeds.
 - **Source filter** — every source has a toggle. Flip them from the chip row on
   the feed, or from the Sources sheet with `Select all` / `Clear` shortcuts.
-- **Add your own feed** — paste any RSS/Atom URL, name it, tag it Türkiye or
-  Worldwide. Custom feeds sit alongside the built-in ones and can be deleted.
+- **Find sources by search** — the Sources sheet opens a searchable directory of
+  ~45 well-known Turkish and worldwide feeds. Type `bilim`, `spor` or `BBC` and
+  add what you want with one tap; anything already in your list shows as added.
+- **Auto-discovery from a site address** — paste `nature.com` (or any site) and
+  the app finds that site's feeds: it reads the page's own
+  `<link rel="alternate">` tags, falls back to probing the usual paths
+  (`/rss`, `/feed`, `/index.xml`, …), and offers only candidates it actually
+  fetched and parsed, with the article count it found.
+- **Add your own feed** — or paste an RSS/Atom URL directly, name it, and tag it
+  Türkiye or Worldwide. Custom feeds sit alongside the built-in ones.
 - **Unified timeline** — all selected feeds are fetched in parallel, merged,
   deduplicated by link, and sorted newest first.
 - **Search** across headline, summary and source name (Turkish-aware casing, so
@@ -113,14 +121,17 @@ TR trt-haber          OK     40 articles (40 dated, 38 with images) — …
 WW reuters-agency     FAIL   HTTP 404
 ```
 
-Run it on a machine with unrestricted network access, then prune or replace
-anything reported as `FAIL` or `EMPTY` in `src/data/sources.ts`.
+It covers both the built-in sources and the Add-source directory. Run it on a
+machine with unrestricted network access, then prune or replace anything
+reported as `FAIL` or `EMPTY` in `src/data/sources.ts` or `src/data/catalog.ts`.
 
-> **Note:** the built-in feed URLs were **not** verified against the live
-> internet during development — the build sandbox blocked all outbound traffic
-> to news domains. The parser is covered by unit tests against RSS 2.0, Atom and
-> RDF fixtures, but please run `npm run check-feeds` once before relying on the
-> bundled source list.
+> **Note:** none of the bundled feed URLs — built-ins or directory — were
+> verified against the live internet during development. The build sandbox
+> returns `HTTP 403` for every news domain, so a run there reports `0/67
+> healthy` regardless of whether a URL is correct, which makes it useless as a
+> check. The parser, the directory search and the discovery helpers are covered
+> by unit tests against fixtures, but please run `npm run check-feeds` from your
+> own machine before relying on the bundled lists.
 
 ## Project layout
 
@@ -133,9 +144,11 @@ src/
     strings.ts              every UI string, in Turkish and English
     index.ts                locale detection and language resolution
   data/sources.ts           built-in feeds, tagged by region, category, language
+  data/catalog.ts           searchable directory of feeds you can add, + ranking
   data/tabs.ts              which sources a pinned tab (or the All tab) resolves to
   services/
     rss.ts                  fetch + parse RSS 2.0 / RSS 1.0 (RDF) / Atom
+    discovery.ts            finds a site's feeds from its address
     newsService.ts          parallel fetch, dedupe, sort, search, timestamps
     openArticle.ts          in-app browser with system-browser fallback
   storage/prefs.ts          AsyncStorage persistence (filters, language, tabs, feeds, saves)
