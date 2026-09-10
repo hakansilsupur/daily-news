@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SegmentedControl } from './SegmentedControl';
 import { localeTag, UI_LANGUAGE_PREFERENCES, type AddSourceError } from '../i18n';
@@ -28,6 +29,7 @@ interface Props {
 
 export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
   const { t } = app;
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [newRegion, setNewRegion] = useState<Region>('turkey');
@@ -95,7 +97,7 @@ export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
 
             <ScrollView
               style={styles.scroll}
-              contentContainerStyle={styles.scrollContent}
+              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 24 }}
               keyboardShouldPersistTaps="handled"
             >
               <View style={styles.group}>
@@ -241,6 +243,9 @@ const styles = StyleSheet.create({
     maxHeight: '88%',
   },
   sheet: {
+    // Without flexShrink the content grows past the wrapper's maxHeight, which
+    // pushes the end of the list (and the Add source button) off the screen.
+    flexShrink: 1,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     overflow: 'hidden',
@@ -275,10 +280,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   scroll: {
+    flexShrink: 1,
     marginTop: 8,
-  },
-  scrollContent: {
-    paddingBottom: 32,
   },
   group: {
     paddingHorizontal: 18,

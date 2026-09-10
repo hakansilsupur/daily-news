@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { NewsApp } from '../hooks/useNewsApp';
 import { localeTag, type FeedTabError } from '../i18n';
@@ -29,6 +30,7 @@ interface Props {
 /** Create or edit a pinned tab: give it a name, then tick the sources it holds. */
 export function FeedTabSheet({ tab, onClose, theme, app }: Props) {
   const { t } = app;
+  const insets = useSafeAreaInsets();
   const visible = tab !== undefined;
   const editing = tab ?? null;
 
@@ -95,7 +97,11 @@ export function FeedTabSheet({ tab, onClose, theme, app }: Props) {
               </Pressable>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+            <ScrollView
+              style={styles.scroll}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.group}>
                 <TextInput
                   value={name}
@@ -159,22 +165,35 @@ export function FeedTabSheet({ tab, onClose, theme, app }: Props) {
                 </View>
               ))}
 
-              <View style={styles.group}>
-                {error ? (
-                  <Text style={[styles.error, { color: theme.danger }]}>{t.feedTabError[error]}</Text>
+            </ScrollView>
+
+            {/* Pinned below the list: with 20-odd sources to tick, a save button
+                at the end of the scroll is a save button nobody can find. */}
+            <View
+              style={[
+                styles.footer,
+                { borderTopColor: theme.border, paddingBottom: Math.max(insets.bottom, 12) },
+              ]}
+            >
+              {error ? (
+                <Text style={[styles.error, { color: theme.danger }]}>{t.feedTabError[error]}</Text>
+              ) : null}
+
+              <View style={styles.footerRow}>
+                {editing ? (
+                  <Pressable
+                    onPress={handleDelete}
+                    style={[styles.deleteButton, { borderColor: theme.border }]}
+                  >
+                    <Text style={[styles.deleteButtonText, { color: theme.danger }]}>{t.deleteTab}</Text>
+                  </Pressable>
                 ) : null}
 
                 <Pressable onPress={handleSave} style={[styles.saveButton, { backgroundColor: theme.accent }]}>
                   <Text style={[styles.saveButtonText, { color: theme.accentText }]}>{t.saveTab}</Text>
                 </Pressable>
-
-                {editing ? (
-                  <Pressable onPress={handleDelete} style={styles.deleteButton}>
-                    <Text style={[styles.deleteButtonText, { color: theme.danger }]}>{t.deleteTab}</Text>
-                  </Pressable>
-                ) : null}
               </View>
-            </ScrollView>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -192,6 +211,9 @@ const styles = StyleSheet.create({
     maxHeight: '88%',
   },
   sheet: {
+    // Views do not shrink by default in React Native, so without this the
+    // content grows past the wrapper's maxHeight and the footer lands offscreen.
+    flexShrink: 1,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     overflow: 'hidden',
@@ -208,8 +230,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
+  scroll: {
+    flexShrink: 1,
+  },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: 20,
   },
   group: {
     paddingHorizontal: 18,
@@ -252,14 +277,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  footer: {
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
   error: {
     fontSize: 12,
   },
   saveButton: {
+    flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 4,
   },
   saveButtonText: {
     fontSize: 15,
@@ -267,6 +302,9 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
   },
   deleteButtonText: {
