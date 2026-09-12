@@ -1,4 +1,5 @@
 import { fetchFeed } from './rss';
+import { foldForSearch } from './text';
 import type { Article, FeedResult, NewsSource } from '../types';
 
 /**
@@ -40,14 +41,14 @@ export function mergeAndSort(results: FeedResult[]): Article[] {
 }
 
 export function searchArticles(articles: Article[], query: string): Article[] {
-  const needle = query.trim().toLocaleLowerCase('tr');
+  const needle = foldForSearch(query.trim());
   if (!needle) return articles;
 
   return articles.filter(
     (article) =>
-      article.title.toLocaleLowerCase('tr').includes(needle) ||
-      article.summary.toLocaleLowerCase('tr').includes(needle) ||
-      article.sourceName.toLocaleLowerCase('tr').includes(needle),
+      foldForSearch(article.title).includes(needle) ||
+      foldForSearch(article.summary).includes(needle) ||
+      foldForSearch(article.sourceName).includes(needle),
   );
 }
 

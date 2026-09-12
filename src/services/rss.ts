@@ -127,7 +127,7 @@ function toArticle(entry: Record<string, unknown>, source: NewsSource): Article 
     publishedAt: published,
     sourceId: source.id,
     sourceName: source.name,
-    region: source.region,
+    scope: source.scope,
   };
 }
 

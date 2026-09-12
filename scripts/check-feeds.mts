@@ -16,7 +16,7 @@ const TIMEOUT_MS = 20_000;
 async function check(source: NewsSource): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  const label = `${source.region === 'turkey' ? 'TR' : 'WW'} ${source.id.padEnd(18)}`;
+  const label = `${(source.scope === 'world' ? 'ww' : source.scope).toUpperCase()} ${source.id.padEnd(18)}`;
 
   try {
     const response = await fetch(source.feedUrl, {

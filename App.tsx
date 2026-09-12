@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CountryPickerSheet } from './src/components/CountryPickerSheet';
 import { SourceFilterSheet } from './src/components/SourceFilterSheet';
 import { TabBar, type TabKey } from './src/components/TabBar';
 import { useNewsApp } from './src/hooks/useNewsApp';
@@ -17,6 +18,7 @@ function AppShell() {
 
   const [tab, setTab] = useState<TabKey>('feed');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background, paddingTop: insets.top }]}>
@@ -28,7 +30,12 @@ function AppShell() {
             <ActivityIndicator color={theme.accent} />
           </View>
         ) : tab === 'feed' ? (
-          <FeedScreen app={app} theme={theme} onOpenFilters={() => setFiltersOpen(true)} />
+          <FeedScreen
+            app={app}
+            theme={theme}
+            onOpenFilters={() => setFiltersOpen(true)}
+            onPickCountry={() => setCountryPickerOpen(true)}
+          />
         ) : (
           <SavedScreen app={app} theme={theme} />
         )}
@@ -47,6 +54,15 @@ function AppShell() {
         onClose={() => setFiltersOpen(false)}
         theme={theme}
         app={app}
+      />
+
+      <CountryPickerSheet
+        visible={countryPickerOpen}
+        onClose={() => setCountryPickerOpen(false)}
+        theme={theme}
+        selected={app.country}
+        counts={app.sourceCountsByCountry}
+        onSelect={app.setCountry}
       />
     </View>
   );

@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { Article, NewsSource, RegionFilter } from '../types';
+import { DEFAULT_COUNTRY, isCountryCode } from '../data/countries';
+import type { Article, CountryCode, NewsSource, ScopeMode } from '../types';
 
 const KEYS = {
-  region: 'prefs:region',
+  scopeMode: 'prefs:scopeMode',
+  country: 'prefs:country',
   enabledSources: 'prefs:enabledSources',
   customSources: 'prefs:customSources',
   saved: 'prefs:savedArticles',
@@ -27,8 +29,20 @@ async function writeJson(key: string, value: unknown): Promise<void> {
   }
 }
 
-export const loadRegion = () => readJson<RegionFilter>(KEYS.region, 'all');
-export const saveRegion = (region: RegionFilter) => writeJson(KEYS.region, region);
+/** Defaults to the selected country, which itself defaults to Türkiye. */
+export const loadScopeMode = () => readJson<ScopeMode>(KEYS.scopeMode, 'country');
+export const saveScopeMode = (mode: ScopeMode) => writeJson(KEYS.scopeMode, mode);
+
+/**
+ * Falls back to the default country if storage holds a code the app no longer
+ * ships — otherwise a removed country would leave the feed permanently empty.
+ */
+export async function loadCountry(): Promise<CountryCode> {
+  const stored = await readJson<unknown>(KEYS.country, DEFAULT_COUNTRY);
+  return isCountryCode(stored) ? stored : DEFAULT_COUNTRY;
+}
+
+export const saveCountry = (country: CountryCode) => writeJson(KEYS.country, country);
 
 /**
  * `null` means "the user has never chosen", which the app reads as

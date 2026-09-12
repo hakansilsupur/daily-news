@@ -1,4 +1,38 @@
-export type Region = 'turkey' | 'world';
+/** ISO 3166-1 alpha-2, lowercase. Extend alongside `COUNTRIES`. */
+export type CountryCode =
+  | 'tr'
+  | 'us'
+  | 'gb'
+  | 'de'
+  | 'fr'
+  | 'es'
+  | 'it'
+  | 'nl'
+  | 'in'
+  | 'jp'
+  | 'br'
+  | 'ca'
+  | 'au';
+
+/** Where a source reports from: one country, or international coverage. */
+export type SourceScope = CountryCode | 'world';
+
+/**
+ * What the feed is currently showing.
+ * - `country` — only the selected country's sources (Türkiye by default)
+ * - `world`   — only international sources
+ * - `all`     — the selected country plus international
+ */
+export type ScopeMode = 'country' | 'world' | 'all';
+
+export interface Country {
+  code: CountryCode;
+  /** English name, used for the picker list and its search. */
+  name: string;
+  /** Endonym shown as a subtitle, e.g. "Türkiye", "Deutschland". */
+  nativeName: string;
+  flag: string;
+}
 
 export type SourceCategory =
   | 'general'
@@ -11,7 +45,7 @@ export interface NewsSource {
   /** Stable identifier — persisted in preferences, so never rename an existing one. */
   id: string;
   name: string;
-  region: Region;
+  scope: SourceScope;
   category: SourceCategory;
   feedUrl: string;
   /** Two-letter language tag, used only for display. */
@@ -31,7 +65,7 @@ export interface Article {
   publishedAt: number;
   sourceId: string;
   sourceName: string;
-  region: Region;
+  scope: SourceScope;
 }
 
 export interface FeedResult {
@@ -39,5 +73,3 @@ export interface FeedResult {
   articles: Article[];
   error?: string;
 }
-
-export type RegionFilter = Region | 'all';

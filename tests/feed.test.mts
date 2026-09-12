@@ -7,12 +7,12 @@ import {
   searchArticles,
 } from '../src/services/newsService';
 import { parseFeed, stripHtml } from '../src/services/rss';
-import type { NewsSource, Region } from '../src/types';
+import type { NewsSource, SourceScope } from '../src/types';
 
-const source = (id: string, region: Region): NewsSource => ({
+const source = (id: string, scope: SourceScope): NewsSource => ({
   id,
   name: id,
-  region,
+  scope,
   category: 'general',
   feedUrl: `https://example.test/${id}`,
   language: 'tr',
@@ -63,7 +63,7 @@ const RDF = `<?xml version="1.0"?>
 </rdf:RDF>`;
 
 test('parses RSS 2.0, decoding entities and stripping markup', () => {
-  const articles = parseFeed(RSS_2, source('rss2', 'turkey'));
+  const articles = parseFeed(RSS_2, source('rss2', 'tr'));
 
   assert.equal(articles.length, 2, 'items without a link are dropped');
   assert.equal(articles[0].title, 'Ankara\'da "önemli" gelişme');
@@ -71,7 +71,7 @@ test('parses RSS 2.0, decoding entities and stripping markup', () => {
   assert.equal(articles[0].imageUrl, 'https://cdn/a.jpg', 'enclosure wins over inline img');
   assert.equal(articles[1].imageUrl, 'https://cdn/b.jpg', 'media:content is the fallback');
   assert.ok(articles[0].publishedAt > 0);
-  assert.equal(articles[0].region, 'turkey');
+  assert.equal(articles[0].scope, 'tr');
 });
 
 test('parses Atom and prefers the alternate link', () => {
@@ -97,7 +97,7 @@ test('non-feed input yields no articles instead of throwing', () => {
 });
 
 test('merging dedupes by link and sorts newest first', () => {
-  const turkish = parseFeed(RSS_2, source('rss2', 'turkey'));
+  const turkish = parseFeed(RSS_2, source('rss2', 'tr'));
   const world = parseFeed(ATOM, source('atom', 'world'));
 
   const merged = mergeAndSort([
@@ -114,12 +114,25 @@ test('merging dedupes by link and sorts newest first', () => {
 });
 
 test('search is case-insensitive for Turkish text', () => {
-  const articles = parseFeed(RSS_2, source('rss2', 'turkey'));
+  const articles = parseFeed(RSS_2, source('rss2', 'tr'));
 
   assert.equal(searchArticles(articles, 'ANKARA').length, 1);
   assert.equal(searchArticles(articles, 'gelişme').length, 1);
   assert.equal(searchArticles(articles, '   ').length, articles.length, 'blank query is a no-op');
   assert.equal(searchArticles(articles, 'zzz').length, 0);
+});
+
+test('search reconciles the Turkish dotted and dotless i', () => {
+  const [first] = parseFeed(RSS_2, source('rss2', 'tr'));
+  const articles = [{ ...first, title: 'İstanbul’da yeni metro hattı' }];
+
+  // A caps-lock query types ASCII I, which Turkish casing alone folds to ı.
+  assert.equal(searchArticles(articles, 'ISTANBUL').length, 1, 'ASCII I matches İ');
+  assert.equal(searchArticles(articles, 'İSTANBUL').length, 1);
+  assert.equal(searchArticles(articles, 'istanbul').length, 1);
+  assert.equal(searchArticles(articles, 'ıstanbul').length, 1, 'dotless ı matches too');
+  assert.equal(searchArticles(articles, 'hattı').length, 1);
+  assert.equal(searchArticles(articles, 'HATTI').length, 1);
 });
 
 test('relative timestamps', () => {

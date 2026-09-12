@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { BUILT_IN_SOURCES } from '../data/sources';
+import { countSourcesByCountry, DEFAULT_COUNTRY } from '../data/countries';
+import { BUILT_IN_SOURCES, sourcesForScope } from '../data/sources';
 import { fetchAllFeeds, mergeAndSort, searchArticles } from '../services/newsService';
 import * as prefs from '../storage/prefs';
-import type { Article, NewsSource, RegionFilter } from '../types';
+import type { Article, CountryCode, NewsSource, ScopeMode, SourceScope } from '../types';
 
 export interface NewsApp {
   ready: boolean;
@@ -14,14 +15,21 @@ export interface NewsApp {
   errors: Record<string, string>;
 
   allSources: NewsSource[];
-  /** Sources in the current region, whether enabled or not. */
-  regionSources: NewsSource[];
-  /** Sources actually fetched: in the current region and switched on. */
+  /** Sources the current scope covers, whether enabled or not. */
+  scopeSources: NewsSource[];
+  /** Sources actually fetched: in scope and switched on. */
   activeSources: NewsSource[];
   enabledIds: string[] | null;
 
-  region: RegionFilter;
-  setRegion: (region: RegionFilter) => void;
+  /** Which slice of the world the feed is showing. */
+  scopeMode: ScopeMode;
+  setScopeMode: (mode: ScopeMode) => void;
+
+  /** The selected country. Defaults to Türkiye, and is freely changeable. */
+  country: CountryCode;
+  setCountry: (country: CountryCode) => void;
+  /** How many built-in sources exist per country code. */
+  sourceCountsByCountry: Record<string, number>;
 
   query: string;
   setQuery: (query: string) => void;
@@ -33,7 +41,7 @@ export interface NewsApp {
   toggleSource: (id: string) => void;
   setAllSourcesEnabled: (enabled: boolean) => void;
 
-  addCustomSource: (input: { name: string; feedUrl: string; region: 'turkey' | 'world' }) => string | null;
+  addCustomSource: (input: { name: string; feedUrl: string; scope: SourceScope }) => string | null;
   removeCustomSource: (id: string) => void;
 
   isSaved: (id: string) => boolean;
@@ -42,13 +50,10 @@ export interface NewsApp {
   refresh: () => void;
 }
 
-function inRegion(source: NewsSource, region: RegionFilter): boolean {
-  return region === 'all' || source.region === region;
-}
-
 export function useNewsApp(): NewsApp {
   const [ready, setReady] = useState(false);
-  const [region, setRegionState] = useState<RegionFilter>('all');
+  const [scopeMode, setScopeModeState] = useState<ScopeMode>('country');
+  const [country, setCountryState] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [enabledIds, setEnabledIds] = useState<string[] | null>(null);
   const [customSources, setCustomSources] = useState<NewsSource[]>([]);
   const [savedArticles, setSavedArticles] = useState<Article[]>([]);
@@ -68,15 +73,18 @@ export function useNewsApp(): NewsApp {
     let cancelled = false;
 
     (async () => {
-      const [storedRegion, storedEnabled, storedCustom, storedSaved] = await Promise.all([
-        prefs.loadRegion(),
-        prefs.loadEnabledSourceIds(),
-        prefs.loadCustomSources(),
-        prefs.loadSavedArticles(),
-      ]);
+      const [storedMode, storedCountry, storedEnabled, storedCustom, storedSaved] =
+        await Promise.all([
+          prefs.loadScopeMode(),
+          prefs.loadCountry(),
+          prefs.loadEnabledSourceIds(),
+          prefs.loadCustomSources(),
+          prefs.loadSavedArticles(),
+        ]);
 
       if (cancelled) return;
-      setRegionState(storedRegion);
+      setScopeModeState(storedMode);
+      setCountryState(storedCountry);
       setEnabledIds(storedEnabled);
       setCustomSources(storedCustom);
       setSavedArticles(storedSaved);
@@ -98,14 +106,14 @@ export function useNewsApp(): NewsApp {
     [enabledIds],
   );
 
-  const regionSources = useMemo(
-    () => allSources.filter((source) => inRegion(source, region)),
-    [allSources, region],
+  const scopeSources = useMemo(
+    () => sourcesForScope(allSources, scopeMode, country),
+    [allSources, scopeMode, country],
   );
 
   const activeSources = useMemo(
-    () => regionSources.filter((source) => isSourceEnabled(source.id)),
-    [regionSources, isSourceEnabled],
+    () => scopeSources.filter((source) => isSourceEnabled(source.id)),
+    [scopeSources, isSourceEnabled],
   );
 
   // Refetch whenever the effective source set changes, keyed on ids so that a
@@ -151,9 +159,21 @@ export function useNewsApp(): NewsApp {
 
   useEffect(() => () => inFlight.current?.abort(), []);
 
-  const setRegion = useCallback((next: RegionFilter) => {
-    setRegionState(next);
-    void prefs.saveRegion(next);
+  const setScopeMode = useCallback((next: ScopeMode) => {
+    setScopeModeState(next);
+    void prefs.saveScopeMode(next);
+  }, []);
+
+  const setCountry = useCallback((next: CountryCode) => {
+    setCountryState(next);
+    void prefs.saveCountry(next);
+    // Picking a country is a request to read that country — if the feed was
+    // showing international news only, switch back to the country scope.
+    setScopeModeState((mode) => {
+      if (mode !== 'world') return mode;
+      void prefs.saveScopeMode('country');
+      return 'country';
+    });
   }, []);
 
   const commitEnabled = useCallback((ids: string[]) => {
@@ -175,13 +195,13 @@ export function useNewsApp(): NewsApp {
   const setAllSourcesEnabled = useCallback(
     (enabled: boolean) => {
       const current = new Set(enabledIds ?? allSources.map((source) => source.id));
-      for (const source of regionSources) {
+      for (const source of scopeSources) {
         if (enabled) current.add(source.id);
         else current.delete(source.id);
       }
       commitEnabled([...current]);
     },
-    [enabledIds, allSources, regionSources, commitEnabled],
+    [enabledIds, allSources, scopeSources, commitEnabled],
   );
 
   const commitCustom = useCallback((sources: NewsSource[]) => {
@@ -190,7 +210,7 @@ export function useNewsApp(): NewsApp {
   }, []);
 
   const addCustomSource = useCallback<NewsApp['addCustomSource']>(
-    ({ name, feedUrl, region: sourceRegion }) => {
+    ({ name, feedUrl, scope }) => {
       const trimmedName = name.trim();
       const trimmedUrl = feedUrl.trim();
 
@@ -204,9 +224,9 @@ export function useNewsApp(): NewsApp {
           id: `custom:${Date.now()}`,
           name: trimmedName,
           feedUrl: trimmedUrl,
-          region: sourceRegion,
+          scope,
           category: 'general',
-          language: sourceRegion === 'turkey' ? 'tr' : 'en',
+          language: scope === 'world' ? 'en' : scope,
           custom: true,
         },
       ]);
@@ -228,18 +248,15 @@ export function useNewsApp(): NewsApp {
     [savedArticles],
   );
 
-  const toggleSaved = useCallback(
-    (article: Article) => {
-      setSavedArticles((current) => {
-        const next = current.some((item) => item.id === article.id)
-          ? current.filter((item) => item.id !== article.id)
-          : [article, ...current];
-        void prefs.saveSavedArticles(next);
-        return next;
-      });
-    },
-    [],
-  );
+  const toggleSaved = useCallback((article: Article) => {
+    setSavedArticles((current) => {
+      const next = current.some((item) => item.id === article.id)
+        ? current.filter((item) => item.id !== article.id)
+        : [article, ...current];
+      void prefs.saveSavedArticles(next);
+      return next;
+    });
+  }, []);
 
   const refresh = useCallback(() => {
     setRefreshing(true);
@@ -248,6 +265,11 @@ export function useNewsApp(): NewsApp {
 
   const articles = useMemo(() => searchArticles(rawArticles, query), [rawArticles, query]);
 
+  const sourceCountsByCountry = useMemo(
+    () => countSourcesByCountry(allSources),
+    [allSources],
+  );
+
   return {
     ready,
     loading,
@@ -255,11 +277,14 @@ export function useNewsApp(): NewsApp {
     lastUpdated,
     errors,
     allSources,
-    regionSources,
+    scopeSources,
     activeSources,
     enabledIds,
-    region,
-    setRegion,
+    scopeMode,
+    setScopeMode,
+    country,
+    setCountry,
+    sourceCountsByCountry,
     query,
     setQuery,
     articles,

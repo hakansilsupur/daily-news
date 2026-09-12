@@ -13,10 +13,11 @@ import {
   View,
 } from 'react-native';
 
-import { CATEGORY_LABELS, REGION_LABELS } from '../data/sources';
+import { scopeFlag, scopeLabel } from '../data/countries';
+import { CATEGORY_LABELS } from '../data/sources';
 import type { NewsApp } from '../hooks/useNewsApp';
 import type { Theme } from '../theme';
-import type { NewsSource, Region } from '../types';
+import type { NewsSource, SourceScope } from '../types';
 
 interface Props {
   visible: boolean;
@@ -28,20 +29,28 @@ interface Props {
 export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
-  const [newRegion, setNewRegion] = useState<Region>('turkey');
+  const [newScope, setNewScope] = useState<SourceScope>(app.country);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const grouped: { region: Region; sources: NewsSource[] }[] = (
-    ['turkey', 'world'] as Region[]
+  // A new feed belongs either to the country on screen or to the world bucket.
+  const scopeChoices: SourceScope[] = [app.country, 'world'];
+  // The country can change while this sheet is mounted, which would strand the
+  // stored choice on a scope that is no longer offered.
+  const effectiveScope = scopeChoices.includes(newScope) ? newScope : app.country;
+
+  // Group the in-scope sources by where they report from, in the order the
+  // scope itself implies (country first, then worldwide).
+  const grouped: { scope: SourceScope; sources: NewsSource[] }[] = (
+    [app.country, 'world'] as SourceScope[]
   )
-    .map((region) => ({
-      region,
-      sources: app.regionSources.filter((source) => source.region === region),
+    .map((scope) => ({
+      scope,
+      sources: app.scopeSources.filter((source) => source.scope === scope),
     }))
     .filter((group) => group.sources.length > 0);
 
   const handleAdd = () => {
-    const error = app.addCustomSource({ name, feedUrl: url, region: newRegion });
+    const error = app.addCustomSource({ name, feedUrl: url, scope: effectiveScope });
     setFormError(error);
     if (!error) {
       setName('');
@@ -85,9 +94,9 @@ export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
               keyboardShouldPersistTaps="handled"
             >
               {grouped.map((group) => (
-                <View key={group.region} style={styles.group}>
+                <View key={group.scope} style={styles.group}>
                   <Text style={[styles.groupTitle, { color: theme.textMuted }]}>
-                    {REGION_LABELS[group.region].toUpperCase()}
+                    {scopeFlag(group.scope)}  {scopeLabel(group.scope).toUpperCase()}
                   </Text>
 
                   {group.sources.map((source) => {
@@ -153,23 +162,25 @@ export function SourceFilterSheet({ visible, onClose, theme, app }: Props) {
                   style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
                 />
 
-                <View style={styles.regionPicker}>
-                  {(['turkey', 'world'] as Region[]).map((region) => {
-                    const selected = newRegion === region;
+                <View style={styles.scopePicker}>
+                  {scopeChoices.map((scope) => {
+                    const selected = effectiveScope === scope;
                     return (
                       <Pressable
-                        key={region}
-                        onPress={() => setNewRegion(region)}
+                        key={scope}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected }}
+                        onPress={() => setNewScope(scope)}
                         style={[
-                          styles.regionOption,
+                          styles.scopeOption,
                           {
                             borderColor: selected ? theme.accent : theme.border,
                             backgroundColor: selected ? theme.accentSoft : theme.surface,
                           },
                         ]}
                       >
-                        <Text style={[styles.regionOptionText, { color: selected ? theme.accent : theme.textMuted }]}>
-                          {REGION_LABELS[region]}
+                        <Text style={[styles.scopeOptionText, { color: selected ? theme.accent : theme.textMuted }]}>
+                          {scopeFlag(scope)} {scopeLabel(scope)}
                         </Text>
                       </Pressable>
                     );
@@ -280,18 +291,18 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
   },
-  regionPicker: {
+  scopePicker: {
     flexDirection: 'row',
     gap: 10,
   },
-  regionOption: {
+  scopeOption: {
     flex: 1,
     paddingVertical: 9,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
   },
-  regionOptionText: {
+  scopeOptionText: {
     fontSize: 13,
     fontWeight: '600',
   },

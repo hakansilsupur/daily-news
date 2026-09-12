@@ -10,7 +10,7 @@ interface Props {
   onToggle: (id: string) => void;
 }
 
-/** Horizontal quick-toggles for every source in the current region. */
+/** Horizontal quick-toggles for every source in the current scope. */
 export function SourceChips({ theme, sources, isEnabled, onToggle }: Props) {
   return (
     <ScrollView

@@ -13,8 +13,9 @@ import {
 
 import { ArticleCard } from '../components/ArticleCard';
 import { EmptyState } from '../components/EmptyState';
-import { RegionTabs } from '../components/RegionTabs';
+import { ScopeTabs } from '../components/ScopeTabs';
 import { SourceChips } from '../components/SourceChips';
+import { getCountry, WORLD_LABEL } from '../data/countries';
 import type { NewsApp } from '../hooks/useNewsApp';
 import { formatRelativeTime } from '../services/newsService';
 import { openArticle } from '../services/openArticle';
@@ -25,10 +26,18 @@ interface Props {
   app: NewsApp;
   theme: Theme;
   onOpenFilters: () => void;
+  onPickCountry: () => void;
 }
 
-export function FeedScreen({ app, theme, onOpenFilters }: Props) {
+export function FeedScreen({ app, theme, onOpenFilters, onPickCountry }: Props) {
   const failedCount = Object.keys(app.errors).length;
+
+  const scopeName =
+    app.scopeMode === 'world'
+      ? WORLD_LABEL
+      : app.scopeMode === 'all'
+        ? `${getCountry(app.country).name} + ${WORLD_LABEL}`
+        : getCountry(app.country).name;
 
   const renderItem = useCallback(
     ({ item }: { item: Article }) => (
@@ -49,7 +58,7 @@ export function FeedScreen({ app, theme, onOpenFilters }: Props) {
         <View>
           <Text style={[styles.title, { color: theme.text }]}>Headlines</Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            {app.activeSources.length} of {app.regionSources.length} sources
+            {scopeName} · {app.activeSources.length} of {app.scopeSources.length} sources
             {app.lastUpdated ? ` · updated ${formatRelativeTime(app.lastUpdated)}` : ''}
           </Text>
         </View>
@@ -81,11 +90,17 @@ export function FeedScreen({ app, theme, onOpenFilters }: Props) {
         ) : null}
       </View>
 
-      <RegionTabs theme={theme} value={app.region} onChange={app.setRegion} />
+      <ScopeTabs
+        theme={theme}
+        mode={app.scopeMode}
+        country={app.country}
+        onChangeMode={app.setScopeMode}
+        onPickCountry={onPickCountry}
+      />
 
       <SourceChips
         theme={theme}
-        sources={app.regionSources}
+        sources={app.scopeSources}
         isEnabled={app.isSourceEnabled}
         onToggle={app.toggleSource}
       />
@@ -105,6 +120,19 @@ export function FeedScreen({ app, theme, onOpenFilters }: Props) {
           <ActivityIndicator color={theme.accent} />
           <Text style={[styles.loadingText, { color: theme.textMuted }]}>Fetching feeds…</Text>
         </View>
+      );
+    }
+
+    if (app.scopeSources.length === 0) {
+      return (
+        <EmptyState
+          theme={theme}
+          icon="earth-outline"
+          title={`No sources for ${getCountry(app.country).name}`}
+          message="Pick another country, or add a feed of your own for this one."
+          actionLabel="Choose a country"
+          onAction={onPickCountry}
+        />
       );
     }
 
