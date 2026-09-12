@@ -1,4 +1,10 @@
-import type { LanguageFilter, NewsSource, Region, RegionFilter } from '../types';
+import type {
+  CountryCode,
+  LanguageFilter,
+  NewsSource,
+  RegionFilter,
+  SourceOrigin,
+} from '../types';
 
 /**
  * Built-in feeds. Everything here is a public RSS/Atom endpoint, so no API keys
@@ -9,7 +15,7 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   {
     id: 'aa-guncel',
     name: 'Anadolu Ajansı',
-    region: 'turkey',
+    region: 'tr',
     category: 'agency',
     feedUrl: 'https://www.aa.com.tr/tr/rss/default?cat=guncel',
     language: 'tr',
@@ -17,7 +23,7 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   {
     id: 'trt-haber',
     name: 'TRT Haber',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     feedUrl: 'https://www.trthaber.com/sondakika.rss',
     language: 'tr',
@@ -25,7 +31,7 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   {
     id: 'hurriyet',
     name: 'Hürriyet',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     feedUrl: 'https://www.hurriyet.com.tr/rss/anasayfa',
     language: 'tr',
@@ -33,7 +39,7 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   {
     id: 'sozcu',
     name: 'Sözcü',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     feedUrl: 'https://www.sozcu.com.tr/feed/',
     language: 'tr',
@@ -41,7 +47,7 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   {
     id: 'cumhuriyet',
     name: 'Cumhuriyet',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     feedUrl: 'https://www.cumhuriyet.com.tr/rss/son_dakika.xml',
     language: 'tr',
@@ -49,7 +55,7 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   {
     id: 'ntv',
     name: 'NTV',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     feedUrl: 'https://www.ntv.com.tr/gundem.rss',
     language: 'tr',
@@ -57,7 +63,7 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   {
     id: 'bbc-turkce',
     name: 'BBC News Türkçe',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     feedUrl: 'https://feeds.bbci.co.uk/turkce/rss.xml',
     language: 'tr',
@@ -65,7 +71,7 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   {
     id: 'bianet',
     name: 'Bianet',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     feedUrl: 'https://bianet.org/rss/anasayfa',
     language: 'tr',
@@ -73,7 +79,7 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   {
     id: 'dunya-ekonomi',
     name: 'Dünya Gazetesi',
-    region: 'turkey',
+    region: 'tr',
     category: 'business',
     feedUrl: 'https://www.dunya.com/rss?dunya',
     language: 'tr',
@@ -81,7 +87,7 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   {
     id: 'webrazzi',
     name: 'Webrazzi',
-    region: 'turkey',
+    region: 'tr',
     category: 'technology',
     feedUrl: 'https://webrazzi.com/feed/',
     language: 'tr',
@@ -89,7 +95,7 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   {
     id: 'fanatik',
     name: 'Fanatik',
-    region: 'turkey',
+    region: 'tr',
     category: 'sports',
     feedUrl: 'https://www.fanatik.com.tr/rss/anasayfa',
     language: 'tr',
@@ -186,25 +192,45 @@ export const BUILT_IN_SOURCES: NewsSource[] = [
   },
 ];
 
-export function sourcesByRegion(sources: NewsSource[], region: Region): NewsSource[] {
-  return sources.filter((source) => source.region === region);
+export function sourcesByOrigin(sources: NewsSource[], origin: SourceOrigin): NewsSource[] {
+  return sources.filter((source) => source.region === origin);
+}
+
+/** Does this source belong to the bucket the filter names, for this home country? */
+export function matchesRegion(
+  source: NewsSource,
+  region: RegionFilter,
+  country: CountryCode,
+): boolean {
+  if (region === 'all') return true;
+  if (region === 'world') return source.region === 'world';
+  return source.region === country;
 }
 
 /**
  * The sources a given region + language filter selects. `all` on either axis
  * means "do not narrow on it", so `{ region: 'all', language: 'all' }` is
- * everything. Both filters apply together: Türkiye + English is BBC News
- * Türkçe's region-mates that publish in English, which may well be empty — the
- * feed screen reports that as "no sources selected" rather than silently
+ * everything. `local` resolves against the chosen home country, so the stored
+ * filter survives a change of country.
+ *
+ * Both filters apply together, and a combination nothing matches stays empty:
+ * the feed screen reports that as "no sources selected" rather than silently
  * widening the filter.
  */
 export function filterSources(
   sources: NewsSource[],
-  filters: { region: RegionFilter; language: LanguageFilter },
+  filters: { region: RegionFilter; language: LanguageFilter; country: CountryCode },
 ): NewsSource[] {
   return sources.filter(
     (source) =>
-      (filters.region === 'all' || source.region === filters.region) &&
+      matchesRegion(source, filters.region, filters.country) &&
       (filters.language === 'all' || source.language === filters.language),
   );
+}
+
+/** The distinct languages present in a source list, for the language filter. */
+export function languagesIn(sources: NewsSource[]): NewsSource['language'][] {
+  const seen = new Set<NewsSource['language']>();
+  for (const source of sources) seen.add(source.language);
+  return [...seen].sort();
 }

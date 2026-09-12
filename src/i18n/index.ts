@@ -1,5 +1,11 @@
 import { STRINGS, type Strings } from './strings';
-import type { UiLanguage, UiLanguagePreference } from '../types';
+import type {
+  CountryCode,
+  RegionFilter,
+  SourceOrigin,
+  UiLanguage,
+  UiLanguagePreference,
+} from '../types';
 
 export { STRINGS };
 export type { Strings };
@@ -28,6 +34,22 @@ export function resolveLanguage(preference: UiLanguagePreference): UiLanguage {
 
 export function stringsFor(language: UiLanguage): Strings {
   return STRINGS[language];
+}
+
+/** Names where a source belongs: its country, or the worldwide bucket. */
+export function originLabel(strings: Strings, origin: SourceOrigin): string {
+  return origin === 'world' ? strings.worldLabel : strings.countryName[origin];
+}
+
+/** Labels the three feed filters, with `local` reading as the chosen country. */
+export function regionFilterLabel(
+  strings: Strings,
+  region: RegionFilter,
+  country: CountryCode,
+): string {
+  if (region === 'all') return strings.allFilter;
+  if (region === 'world') return strings.worldLabel;
+  return strings.countryName[country];
 }
 
 /** The BCP 47 tag to hand to `toLocaleDateString` and friends. */

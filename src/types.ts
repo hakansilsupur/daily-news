@@ -1,7 +1,14 @@
-export type Region = 'turkey' | 'world';
+/** Countries the app can treat as "home". Türkiye is the default. */
+export type CountryCode = 'tr' | 'us' | 'gb' | 'de' | 'fr' | 'es' | 'it' | 'nl' | 'az';
+
+/**
+ * Where a source belongs: a specific country, or the international bucket for
+ * outlets that report globally rather than for one country's readers.
+ */
+export type SourceOrigin = CountryCode | 'world';
 
 /** Language a source publishes in. */
-export type SourceLanguage = 'tr' | 'en';
+export type SourceLanguage = 'tr' | 'en' | 'de' | 'fr' | 'es' | 'it' | 'nl' | 'az';
 
 /** Languages the interface itself is translated into. */
 export type UiLanguage = 'tr' | 'en';
@@ -21,7 +28,8 @@ export interface NewsSource {
   /** Stable identifier — persisted in preferences, so never rename an existing one. */
   id: string;
   name: string;
-  region: Region;
+  /** The country this source serves, or `world`. */
+  region: SourceOrigin;
   category: SourceCategory;
   feedUrl: string;
   /** Publishing language — shown in the sources sheet and driving the language filter. */
@@ -41,7 +49,7 @@ export interface Article {
   publishedAt: number;
   sourceId: string;
   sourceName: string;
-  region: Region;
+  region: SourceOrigin;
 }
 
 /**
@@ -62,6 +70,10 @@ export interface FeedResult {
   error?: string;
 }
 
-export type RegionFilter = Region | 'all';
+/**
+ * The feed's coarse filter. `local` means "the country I picked", so the same
+ * stored preference keeps working when the user changes countries.
+ */
+export type RegionFilter = 'all' | 'local' | 'world';
 
 export type LanguageFilter = SourceLanguage | 'all';

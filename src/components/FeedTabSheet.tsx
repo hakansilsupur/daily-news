@@ -15,9 +15,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { NewsApp } from '../hooks/useNewsApp';
-import { localeTag, type FeedTabError } from '../i18n';
+import { localeTag, originLabel, type FeedTabError } from '../i18n';
 import type { Theme } from '../theme';
-import type { FeedTab, Region } from '../types';
+import type { FeedTab, SourceOrigin } from '../types';
 
 interface Props {
   /** The tab being edited, `null` for a new one, `undefined` while closed. */
@@ -73,7 +73,15 @@ export function FeedTabSheet({ tab, onClose, theme, app }: Props) {
     ]);
   };
 
-  const groups = (['turkey', 'world'] as Region[])
+  const origins: SourceOrigin[] = [
+    app.country,
+    ...[...new Set(app.allSources.map((source) => source.region))]
+      .filter((origin) => origin !== app.country && origin !== 'world')
+      .sort(),
+    'world',
+  ];
+
+  const groups = origins
     .map((region) => ({
       region,
       sources: app.allSources.filter((source) => source.region === region),
@@ -125,7 +133,7 @@ export function FeedTabSheet({ tab, onClose, theme, app }: Props) {
               {groups.map((group) => (
                 <View key={group.region} style={styles.group}>
                   <Text style={[styles.groupTitle, { color: theme.textMuted }]}>
-                    {t.regionLabel[group.region].toLocaleUpperCase(localeTag(app.uiLanguage))}
+                    {originLabel(t, group.region).toLocaleUpperCase(localeTag(app.uiLanguage))}
                   </Text>
 
                   {group.sources.map((source) => {

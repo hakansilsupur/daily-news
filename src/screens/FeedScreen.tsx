@@ -17,6 +17,7 @@ import { FeedTabStrip } from '../components/FeedTabStrip';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { SourceChips } from '../components/SourceChips';
 import type { NewsApp } from '../hooks/useNewsApp';
+import { regionFilterLabel } from '../i18n';
 import { formatRelativeTime } from '../services/newsService';
 import { openArticle } from '../services/openArticle';
 import type { Theme } from '../theme';
@@ -34,16 +35,18 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
   const { t, selectedTab } = app;
   const failedCount = Object.keys(app.errors).length;
 
-  const regionOptions: { value: RegionFilter; label: string }[] = [
-    { value: 'all', label: t.regionFilter.all },
-    { value: 'turkey', label: t.regionFilter.turkey },
-    { value: 'world', label: t.regionFilter.world },
-  ];
+  const regionOptions: { value: RegionFilter; label: string }[] = (
+    ['all', 'local', 'world'] as RegionFilter[]
+  ).map((value) => ({ value, label: regionFilterLabel(t, value, app.country) }));
 
+  // Only the languages the user's own sources publish in — picking Germany as
+  // your country should not leave you with a Türkçe/English choice.
   const languageOptions: { value: LanguageFilter; label: string }[] = [
-    { value: 'all', label: t.languageFilterOption.all },
-    { value: 'tr', label: t.languageFilterOption.tr },
-    { value: 'en', label: t.languageFilterOption.en },
+    { value: 'all', label: t.allLanguages },
+    ...app.availableLanguages.map((language) => ({
+      value: language as LanguageFilter,
+      label: t.languageName[language],
+    })),
   ];
 
   const renderItem = useCallback(

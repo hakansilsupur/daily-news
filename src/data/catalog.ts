@@ -1,4 +1,12 @@
-import type { NewsSource, Region, RegionFilter, SourceCategory, SourceLanguage } from '../types';
+import { matchesRegion } from './sources';
+import type {
+  CountryCode,
+  NewsSource,
+  RegionFilter,
+  SourceCategory,
+  SourceLanguage,
+  SourceOrigin,
+} from '../types';
 
 /**
  * A searchable directory of well-known feeds, shipped with the app so that
@@ -12,7 +20,7 @@ import type { NewsSource, Region, RegionFilter, SourceCategory, SourceLanguage }
 export interface CatalogEntry {
   id: string;
   name: string;
-  region: Region;
+  region: SourceOrigin;
   category: SourceCategory;
   language: SourceLanguage;
   feedUrl: string;
@@ -25,7 +33,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:milliyet',
     name: 'Milliyet',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     language: 'tr',
     feedUrl: 'https://www.milliyet.com.tr/rss/rssnew/gundemrss.xml',
@@ -34,7 +42,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:haberturk',
     name: 'Habertürk',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     language: 'tr',
     feedUrl: 'https://www.haberturk.com/rss',
@@ -43,7 +51,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:sabah',
     name: 'Sabah',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     language: 'tr',
     feedUrl: 'https://www.sabah.com.tr/rss/gundem.xml',
@@ -52,7 +60,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:milli-gazete',
     name: 'Milli Gazete',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     language: 'tr',
     feedUrl: 'https://www.milligazete.com.tr/rss',
@@ -60,7 +68,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:t24',
     name: 'T24',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     language: 'tr',
     feedUrl: 'https://t24.com.tr/rss',
@@ -68,7 +76,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:diken',
     name: 'Diken',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     language: 'tr',
     feedUrl: 'https://www.diken.com.tr/feed/',
@@ -76,7 +84,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:gazete-duvar',
     name: 'Gazete Duvar',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     language: 'tr',
     feedUrl: 'https://www.gazeteduvar.com.tr/export/rss',
@@ -84,7 +92,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:evrensel',
     name: 'Evrensel',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     language: 'tr',
     feedUrl: 'https://www.evrensel.net/rss/haber.xml',
@@ -92,7 +100,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:karar',
     name: 'Karar',
-    region: 'turkey',
+    region: 'tr',
     category: 'general',
     language: 'tr',
     feedUrl: 'https://www.karar.com/service/rss.php',
@@ -100,7 +108,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:aa-ekonomi',
     name: 'Anadolu Ajansı — Ekonomi',
-    region: 'turkey',
+    region: 'tr',
     category: 'business',
     language: 'tr',
     feedUrl: 'https://www.aa.com.tr/tr/rss/default?cat=ekonomi',
@@ -109,7 +117,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:bloomberg-ht',
     name: 'Bloomberg HT',
-    region: 'turkey',
+    region: 'tr',
     category: 'business',
     language: 'tr',
     feedUrl: 'https://www.bloomberght.com/rss',
@@ -118,7 +126,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:patronlar-dunyasi',
     name: 'Patronlar Dünyası',
-    region: 'turkey',
+    region: 'tr',
     category: 'business',
     language: 'tr',
     feedUrl: 'https://www.patronlardunyasi.com/rss',
@@ -127,7 +135,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:shiftdelete',
     name: 'ShiftDelete',
-    region: 'turkey',
+    region: 'tr',
     category: 'technology',
     language: 'tr',
     feedUrl: 'https://shiftdelete.net/feed',
@@ -136,7 +144,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:donanimhaber',
     name: 'DonanımHaber',
-    region: 'turkey',
+    region: 'tr',
     category: 'technology',
     language: 'tr',
     feedUrl: 'https://www.donanimhaber.com/rss/tum/',
@@ -145,7 +153,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:chip-online',
     name: 'CHIP Online',
-    region: 'turkey',
+    region: 'tr',
     category: 'technology',
     language: 'tr',
     feedUrl: 'https://www.chip.com.tr/rss',
@@ -154,7 +162,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:bilim-teknik',
     name: 'TÜBİTAK Bilim Teknik',
-    region: 'turkey',
+    region: 'tr',
     category: 'science',
     language: 'tr',
     feedUrl: 'https://bilimteknik.tubitak.gov.tr/rss.xml',
@@ -163,7 +171,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:ntv-spor',
     name: 'NTV Spor',
-    region: 'turkey',
+    region: 'tr',
     category: 'sports',
     language: 'tr',
     feedUrl: 'https://www.ntvspor.net/rss',
@@ -172,7 +180,7 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:sporx',
     name: 'Sporx',
-    region: 'turkey',
+    region: 'tr',
     category: 'sports',
     language: 'tr',
     feedUrl: 'https://www.sporx.com/rss/spor.xml',
@@ -181,11 +189,297 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   {
     id: 'cat:trt-spor',
     name: 'TRT Spor',
-    region: 'turkey',
+    region: 'tr',
     category: 'sports',
     language: 'tr',
     feedUrl: 'https://www.trtspor.com.tr/rss',
     keywords: ['spor'],
+  },
+
+  // --- Azerbaijan ---------------------------------------------------------
+  {
+    id: 'cat:trend-az',
+    name: 'Trend.az',
+    region: 'az',
+    category: 'agency',
+    language: 'az',
+    feedUrl: 'https://az.trend.az/feeds/index.rss',
+    keywords: ['azerbaycan', 'azərbaycan'],
+  },
+  {
+    id: 'cat:apa-az',
+    name: 'APA',
+    region: 'az',
+    category: 'agency',
+    language: 'az',
+    feedUrl: 'https://apa.az/rss',
+    keywords: ['azerbaycan', 'azərbaycan'],
+  },
+  {
+    id: 'cat:report-az',
+    name: 'Report.az',
+    region: 'az',
+    category: 'general',
+    language: 'az',
+    feedUrl: 'https://report.az/rss/',
+    keywords: ['azerbaycan', 'azərbaycan'],
+  },
+
+  // --- France -------------------------------------------------------------
+  {
+    id: 'cat:le-monde',
+    name: 'Le Monde',
+    region: 'fr',
+    category: 'general',
+    language: 'fr',
+    feedUrl: 'https://www.lemonde.fr/rss/une.xml',
+    keywords: ['fransa', 'france'],
+  },
+  {
+    id: 'cat:le-figaro',
+    name: 'Le Figaro',
+    region: 'fr',
+    category: 'general',
+    language: 'fr',
+    feedUrl: 'https://www.lefigaro.fr/rss/figaro_actualites.xml',
+    keywords: ['fransa', 'france'],
+  },
+  {
+    id: 'cat:france-info',
+    name: 'France Info',
+    region: 'fr',
+    category: 'general',
+    language: 'fr',
+    feedUrl: 'https://www.francetvinfo.fr/titres.rss',
+    keywords: ['fransa', 'france'],
+  },
+  {
+    id: 'cat:les-echos',
+    name: 'Les Échos',
+    region: 'fr',
+    category: 'business',
+    language: 'fr',
+    feedUrl: 'https://services.lesechos.fr/rss/les-echos-economie.xml',
+    keywords: ['ekonomi', 'économie'],
+  },
+
+  // --- Germany ------------------------------------------------------------
+  {
+    id: 'cat:tagesschau',
+    name: 'tagesschau',
+    region: 'de',
+    category: 'general',
+    language: 'de',
+    feedUrl: 'https://www.tagesschau.de/index~rss2.xml',
+    keywords: ['almanya', 'deutschland'],
+  },
+  {
+    id: 'cat:spiegel',
+    name: 'DER SPIEGEL',
+    region: 'de',
+    category: 'general',
+    language: 'de',
+    feedUrl: 'https://www.spiegel.de/schlagzeilen/tops/index.rss',
+    keywords: ['almanya', 'deutschland'],
+  },
+  {
+    id: 'cat:zeit-online',
+    name: 'ZEIT ONLINE',
+    region: 'de',
+    category: 'general',
+    language: 'de',
+    feedUrl: 'https://newsfeed.zeit.de/index',
+    keywords: ['almanya', 'deutschland'],
+  },
+  {
+    id: 'cat:handelsblatt',
+    name: 'Handelsblatt',
+    region: 'de',
+    category: 'business',
+    language: 'de',
+    feedUrl: 'https://www.handelsblatt.com/contentexport/feed/schlagzeilen',
+    keywords: ['ekonomi', 'wirtschaft'],
+  },
+  {
+    id: 'cat:heise',
+    name: 'heise online',
+    region: 'de',
+    category: 'technology',
+    language: 'de',
+    feedUrl: 'https://www.heise.de/rss/heise-atom.xml',
+    keywords: ['teknoloji', 'technik'],
+  },
+
+  // --- Italy --------------------------------------------------------------
+  {
+    id: 'cat:ansa',
+    name: 'ANSA',
+    region: 'it',
+    category: 'agency',
+    language: 'it',
+    feedUrl: 'https://www.ansa.it/sito/ansait_rss.xml',
+    keywords: ['italya', 'italia'],
+  },
+  {
+    id: 'cat:corriere',
+    name: 'Corriere della Sera',
+    region: 'it',
+    category: 'general',
+    language: 'it',
+    feedUrl: 'https://xml2.corriereobjects.it/rss/homepage.xml',
+    keywords: ['italya', 'italia'],
+  },
+  {
+    id: 'cat:repubblica',
+    name: 'la Repubblica',
+    region: 'it',
+    category: 'general',
+    language: 'it',
+    feedUrl: 'https://www.repubblica.it/rss/homepage/rss2.0.xml',
+    keywords: ['italya', 'italia'],
+  },
+
+  // --- Netherlands --------------------------------------------------------
+  {
+    id: 'cat:nos',
+    name: 'NOS Nieuws',
+    region: 'nl',
+    category: 'general',
+    language: 'nl',
+    feedUrl: 'https://feeds.nos.nl/nosnieuwsalgemeen',
+    keywords: ['hollanda', 'nederland'],
+  },
+  {
+    id: 'cat:nu-nl',
+    name: 'NU.nl',
+    region: 'nl',
+    category: 'general',
+    language: 'nl',
+    feedUrl: 'https://www.nu.nl/rss/Algemeen',
+    keywords: ['hollanda', 'nederland'],
+  },
+  {
+    id: 'cat:volkskrant',
+    name: 'de Volkskrant',
+    region: 'nl',
+    category: 'general',
+    language: 'nl',
+    feedUrl: 'https://www.volkskrant.nl/voorpagina/rss.xml',
+    keywords: ['hollanda', 'nederland'],
+  },
+
+  // --- Spain --------------------------------------------------------------
+  {
+    id: 'cat:el-pais',
+    name: 'El País',
+    region: 'es',
+    category: 'general',
+    language: 'es',
+    feedUrl: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada',
+    keywords: ['ispanya', 'españa'],
+  },
+  {
+    id: 'cat:el-mundo',
+    name: 'El Mundo',
+    region: 'es',
+    category: 'general',
+    language: 'es',
+    feedUrl: 'https://e00-elmundo.uecdn.es/elmundo/rss/portada.xml',
+    keywords: ['ispanya', 'españa'],
+  },
+  {
+    id: 'cat:rtve',
+    name: 'RTVE Noticias',
+    region: 'es',
+    category: 'general',
+    language: 'es',
+    feedUrl: 'https://api2.rtve.es/rss/temas_noticias.xml',
+    keywords: ['ispanya', 'españa'],
+  },
+
+  // --- United Kingdom -----------------------------------------------------
+  {
+    id: 'cat:bbc-uk',
+    name: 'BBC News — UK',
+    region: 'gb',
+    category: 'general',
+    language: 'en',
+    feedUrl: 'https://feeds.bbci.co.uk/news/uk/rss.xml',
+    keywords: ['britain', 'ingiltere'],
+  },
+  {
+    id: 'cat:guardian-uk',
+    name: 'The Guardian — UK',
+    region: 'gb',
+    category: 'general',
+    language: 'en',
+    feedUrl: 'https://www.theguardian.com/uk-news/rss',
+    keywords: ['britain', 'ingiltere'],
+  },
+  {
+    id: 'cat:sky-news-uk',
+    name: 'Sky News — UK',
+    region: 'gb',
+    category: 'general',
+    language: 'en',
+    feedUrl: 'https://feeds.skynews.com/feeds/rss/uk.xml',
+    keywords: ['britain', 'ingiltere'],
+  },
+  {
+    id: 'cat:telegraph',
+    name: 'The Telegraph',
+    region: 'gb',
+    category: 'general',
+    language: 'en',
+    feedUrl: 'https://www.telegraph.co.uk/news/rss.xml',
+    keywords: ['britain', 'ingiltere'],
+  },
+
+  // --- United States ------------------------------------------------------
+  {
+    id: 'cat:npr-news',
+    name: 'NPR News',
+    region: 'us',
+    category: 'general',
+    language: 'en',
+    feedUrl: 'https://feeds.npr.org/1001/rss.xml',
+    keywords: ['abd', 'america', 'usa'],
+  },
+  {
+    id: 'cat:usa-today',
+    name: 'USA TODAY',
+    region: 'us',
+    category: 'general',
+    language: 'en',
+    feedUrl: 'https://rssfeeds.usatoday.com/usatoday-NewsTopStories',
+    keywords: ['abd', 'america', 'usa'],
+  },
+  {
+    id: 'cat:nyt-us',
+    name: 'The New York Times — U.S.',
+    region: 'us',
+    category: 'general',
+    language: 'en',
+    feedUrl: 'https://rss.nytimes.com/services/xml/rss/nyt/US.xml',
+    keywords: ['abd', 'america', 'usa'],
+  },
+  {
+    id: 'cat:politico',
+    name: 'Politico',
+    region: 'us',
+    category: 'general',
+    language: 'en',
+    feedUrl: 'https://rss.politico.com/politics-news.xml',
+    keywords: ['abd', 'politics', 'siyaset'],
+  },
+  {
+    id: 'cat:la-times',
+    name: 'Los Angeles Times',
+    region: 'us',
+    category: 'general',
+    language: 'en',
+    feedUrl: 'https://www.latimes.com/local/rss2.0.xml',
+    keywords: ['abd', 'california'],
   },
 
   // --- Worldwide ----------------------------------------------------------
@@ -429,6 +723,8 @@ function fold(value: string): string {
 
 export interface CatalogSearchOptions {
   region?: RegionFilter;
+  /** Resolves a `local` region filter; defaults to Türkiye. */
+  country?: CountryCode;
   /** Feed URLs already in the user's list — those entries are still shown, flagged as added. */
   existing?: NewsSource[];
 }
@@ -444,7 +740,10 @@ export function searchCatalog(
   options: CatalogSearchOptions = {},
 ): CatalogEntry[] {
   const region = options.region ?? 'all';
-  const inRegion = entries.filter((entry) => region === 'all' || entry.region === region);
+  const country = options.country ?? 'tr';
+  const inRegion = entries.filter((entry) =>
+    matchesRegion({ ...entry, custom: false } as NewsSource, region, country),
+  );
 
   const needle = fold(query.trim());
   if (!needle) return inRegion;

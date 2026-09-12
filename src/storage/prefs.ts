@@ -1,8 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { DEFAULT_COUNTRY, isCountryCode } from '../data/countries';
 import { ALL_TAB_ID } from '../data/tabs';
 import type {
   Article,
+  CountryCode,
   FeedTab,
   LanguageFilter,
   NewsSource,
@@ -19,6 +21,7 @@ const KEYS = {
   languageFilter: 'prefs:languageFilter',
   feedTabs: 'prefs:feedTabs',
   selectedTab: 'prefs:selectedTab',
+  country: 'prefs:country',
 } as const;
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -39,8 +42,25 @@ async function writeJson(key: string, value: unknown): Promise<void> {
   }
 }
 
-export const loadRegion = () => readJson<RegionFilter>(KEYS.region, 'all');
+/**
+ * Before countries were selectable the local bucket was stored as `turkey`.
+ * Upgrading installs read that as `local`, which now resolves against whichever
+ * country the user has chosen.
+ */
+export async function loadRegion(): Promise<RegionFilter> {
+  const stored = await readJson<string>(KEYS.region, 'all');
+  if (stored === 'turkey') return 'local';
+  return stored === 'local' || stored === 'world' ? stored : 'all';
+}
+
 export const saveRegion = (region: RegionFilter) => writeJson(KEYS.region, region);
+
+export async function loadCountry(): Promise<CountryCode> {
+  const stored = await readJson<string>(KEYS.country, DEFAULT_COUNTRY);
+  return isCountryCode(stored) ? stored : DEFAULT_COUNTRY;
+}
+
+export const saveCountry = (country: CountryCode) => writeJson(KEYS.country, country);
 
 /**
  * `null` means "the user has never chosen", which the app reads as
@@ -49,7 +69,13 @@ export const saveRegion = (region: RegionFilter) => writeJson(KEYS.region, regio
 export const loadEnabledSourceIds = () => readJson<string[] | null>(KEYS.enabledSources, null);
 export const saveEnabledSourceIds = (ids: string[]) => writeJson(KEYS.enabledSources, ids);
 
-export const loadCustomSources = () => readJson<NewsSource[]>(KEYS.customSources, []);
+/** Custom feeds saved before countries existed carry `region: 'turkey'`. */
+export async function loadCustomSources(): Promise<NewsSource[]> {
+  const stored = await readJson<NewsSource[]>(KEYS.customSources, []);
+  return stored.map((source) =>
+    (source.region as string) === 'turkey' ? { ...source, region: 'tr' } : source,
+  );
+}
 export const saveCustomSources = (sources: NewsSource[]) => writeJson(KEYS.customSources, sources);
 
 export const loadSavedArticles = () => readJson<Article[]>(KEYS.saved, []);

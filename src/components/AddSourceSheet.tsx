@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SegmentedControl } from './SegmentedControl';
 import { isAlreadyAdded, searchCatalog, SOURCE_CATALOG, type CatalogEntry } from '../data/catalog';
 import type { NewsApp } from '../hooks/useNewsApp';
+import { originLabel, regionFilterLabel } from '../i18n';
 import {
   discoverFeeds,
   looksLikeUrl,
@@ -24,7 +25,7 @@ import {
   type DiscoveredFeed,
 } from '../services/discovery';
 import type { Theme } from '../theme';
-import type { Region, RegionFilter } from '../types';
+import type { RegionFilter } from '../types';
 
 interface Props {
   visible: boolean;
@@ -63,8 +64,8 @@ export function AddSourceSheet({ visible, onClose, theme, app }: Props) {
   useEffect(() => () => inFlight.current?.abort(), []);
 
   const matches = useMemo(
-    () => searchCatalog(SOURCE_CATALOG, query, { region }),
-    [query, region],
+    () => searchCatalog(SOURCE_CATALOG, query, { region, country: app.country }),
+    [query, region, app.country],
   );
 
   const siteUrl = looksLikeUrl(query) ? normalizeSiteUrl(query) : null;
@@ -101,16 +102,15 @@ export function AddSourceSheet({ visible, onClose, theme, app }: Props) {
     app.addCustomSource({
       name: feed.title,
       feedUrl: feed.url,
-      // The region filter doubles as the caller's intent for a discovered feed.
-      region: (region === 'all' ? 'world' : region) as Region,
+      // The region filter doubles as the caller's intent for a discovered feed:
+      // searching under your own country files it there, otherwise worldwide.
+      region: region === 'local' ? app.country : 'world',
     });
   };
 
-  const regionOptions: { value: RegionFilter; label: string }[] = [
-    { value: 'all', label: t.regionFilter.all },
-    { value: 'turkey', label: t.regionFilter.turkey },
-    { value: 'world', label: t.regionFilter.world },
-  ];
+  const regionOptions: { value: RegionFilter; label: string }[] = (
+    ['all', 'local', 'world'] as RegionFilter[]
+  ).map((value) => ({ value, label: regionFilterLabel(t, value, app.country) }));
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent>
@@ -227,7 +227,7 @@ export function AddSourceSheet({ visible, onClose, theme, app }: Props) {
                       key={entry.id}
                       theme={theme}
                       title={entry.name}
-                      subtitle={`${t.regionLabel[entry.region]} · ${t.categoryLabel[entry.category]} · ${entry.language.toUpperCase()}`}
+                      subtitle={`${originLabel(t, entry.region)} · ${t.categoryLabel[entry.category]} · ${entry.language.toUpperCase()}`}
                       added={isAlreadyAdded(entry, app.allSources)}
                       addLabel={t.addLabel}
                       addedLabel={t.addedLabel}

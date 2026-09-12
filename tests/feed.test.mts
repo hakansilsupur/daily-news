@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { isAlreadyAdded, searchCatalog, type CatalogEntry } from '../src/data/catalog';
-import { filterSources } from '../src/data/sources';
+import { COUNTRIES, DEFAULT_COUNTRY, languageForOrigin } from '../src/data/countries';
+import { filterSources, languagesIn } from '../src/data/sources';
 import { pruneTab, sourcesForTab } from '../src/data/tabs';
 import {
   candidateUrls,
@@ -18,9 +19,9 @@ import {
   searchArticles,
 } from '../src/services/newsService';
 import { parseFeed, parseFeedTitle, stripHtml } from '../src/services/rss';
-import type { NewsSource, Region } from '../src/types';
+import type { NewsSource, SourceOrigin } from '../src/types';
 
-const source = (id: string, region: Region): NewsSource => ({
+const source = (id: string, region: SourceOrigin): NewsSource => ({
   id,
   name: id,
   region,
@@ -74,7 +75,7 @@ const RDF = `<?xml version="1.0"?>
 </rdf:RDF>`;
 
 test('parses RSS 2.0, decoding entities and stripping markup', () => {
-  const articles = parseFeed(RSS_2, source('rss2', 'turkey'));
+  const articles = parseFeed(RSS_2, source('rss2', 'tr'));
 
   assert.equal(articles.length, 2, 'items without a link are dropped');
   assert.equal(articles[0].title, 'Ankara\'da "önemli" gelişme');
@@ -82,7 +83,7 @@ test('parses RSS 2.0, decoding entities and stripping markup', () => {
   assert.equal(articles[0].imageUrl, 'https://cdn/a.jpg', 'enclosure wins over inline img');
   assert.equal(articles[1].imageUrl, 'https://cdn/b.jpg', 'media:content is the fallback');
   assert.ok(articles[0].publishedAt > 0);
-  assert.equal(articles[0].region, 'turkey');
+  assert.equal(articles[0].region, 'tr');
 });
 
 test('parses Atom and prefers the alternate link', () => {
@@ -108,7 +109,7 @@ test('non-feed input yields no articles instead of throwing', () => {
 });
 
 test('merging dedupes by link and sorts newest first', () => {
-  const turkish = parseFeed(RSS_2, source('rss2', 'turkey'));
+  const turkish = parseFeed(RSS_2, source('rss2', 'tr'));
   const world = parseFeed(ATOM, source('atom', 'world'));
 
   const merged = mergeAndSort([
@@ -125,7 +126,7 @@ test('merging dedupes by link and sorts newest first', () => {
 });
 
 test('search is case-insensitive for Turkish text', () => {
-  const articles = parseFeed(RSS_2, source('rss2', 'turkey'));
+  const articles = parseFeed(RSS_2, source('rss2', 'tr'));
 
   assert.equal(searchArticles(articles, 'ANKARA').length, 1);
   assert.equal(searchArticles(articles, 'gelişme').length, 1);
@@ -181,18 +182,20 @@ test('resolveLanguage honours an explicit choice over the device locale', () => 
 
 test('filterSources narrows by region and language together', () => {
   const sources: NewsSource[] = [
-    { ...source('trt', 'turkey'), language: 'tr' },
-    { ...source('bbc-turkce', 'turkey'), language: 'tr' },
+    { ...source('trt', 'tr'), language: 'tr' },
+    { ...source('bbc-turkce', 'tr'), language: 'tr' },
     { ...source('bbc-world', 'world'), language: 'en' },
     { ...source('dw-turkce', 'world'), language: 'tr' },
   ];
 
-  assert.equal(filterSources(sources, { region: 'all', language: 'all' }).length, 4);
-  assert.equal(filterSources(sources, { region: 'turkey', language: 'all' }).length, 2);
-  assert.equal(filterSources(sources, { region: 'all', language: 'tr' }).length, 3);
-  assert.equal(filterSources(sources, { region: 'world', language: 'tr' })[0].id, 'dw-turkce');
+  const tr = { country: 'tr' } as const;
+
+  assert.equal(filterSources(sources, { region: 'all', language: 'all', ...tr }).length, 4);
+  assert.equal(filterSources(sources, { region: 'local', language: 'all', ...tr }).length, 2);
+  assert.equal(filterSources(sources, { region: 'all', language: 'tr', ...tr }).length, 3);
+  assert.equal(filterSources(sources, { region: 'world', language: 'tr', ...tr })[0].id, 'dw-turkce');
   assert.deepEqual(
-    filterSources(sources, { region: 'turkey', language: 'en' }),
+    filterSources(sources, { region: 'local', language: 'en', ...tr }),
     [],
     'a combination nothing matches yields an empty list rather than falling back',
   );
@@ -200,24 +203,25 @@ test('filterSources narrows by region and language together', () => {
 
 test('the All tab answers to the ad-hoc filters', () => {
   const sources: NewsSource[] = [
-    { ...source('trt', 'turkey'), language: 'tr' },
+    { ...source('trt', 'tr'), language: 'tr' },
     { ...source('bbc', 'world'), language: 'en' },
     { ...source('dw-tr', 'world'), language: 'tr' },
   ];
   const allOn = () => true;
 
   assert.equal(
-    sourcesForTab(sources, null, { region: 'all', language: 'all', isEnabled: allOn }).length,
+    sourcesForTab(sources, null, { region: 'all', language: 'all', country: 'tr', isEnabled: allOn }).length,
     3,
   );
   assert.equal(
-    sourcesForTab(sources, null, { region: 'world', language: 'tr', isEnabled: allOn })[0].id,
+    sourcesForTab(sources, null, { region: 'world', language: 'tr', country: 'tr', isEnabled: allOn })[0].id,
     'dw-tr',
   );
   assert.deepEqual(
     sourcesForTab(sources, null, {
       region: 'all',
       language: 'all',
+      country: 'tr',
       isEnabled: (id) => id !== 'bbc',
     }).map((s) => s.id),
     ['trt', 'dw-tr'],
@@ -227,15 +231,16 @@ test('the All tab answers to the ad-hoc filters', () => {
 
 test('a pinned tab is an explicit list, immune to the ad-hoc filters', () => {
   const sources: NewsSource[] = [
-    { ...source('trt', 'turkey'), language: 'tr' },
+    { ...source('trt', 'tr'), language: 'tr' },
     { ...source('bbc', 'world'), language: 'en' },
     { ...source('dw-tr', 'world'), language: 'tr' },
   ];
   const tab = { id: 'tab:1', name: 'Karışık', sourceIds: ['bbc', 'trt'] };
 
   const picked = sourcesForTab(sources, tab, {
-    region: 'turkey',
+    region: 'local',
     language: 'tr',
+    country: 'tr',
     isEnabled: () => false,
   });
 
@@ -247,11 +252,11 @@ test('a pinned tab is an explicit list, immune to the ad-hoc filters', () => {
 });
 
 test('a pinned tab drops sources that no longer exist', () => {
-  const sources: NewsSource[] = [{ ...source('trt', 'turkey'), language: 'tr' }];
+  const sources: NewsSource[] = [{ ...source('trt', 'tr'), language: 'tr' }];
   const tab = { id: 'tab:1', name: 'Eski', sourceIds: ['trt', 'custom:999'] };
 
   assert.deepEqual(
-    sourcesForTab(sources, tab, { region: 'all', language: 'all', isEnabled: () => true }).map(
+    sourcesForTab(sources, tab, { region: 'all', language: 'all', country: 'tr', isEnabled: () => true }).map(
       (s) => s.id,
     ),
     ['trt'],
@@ -264,14 +269,66 @@ test('directory search ranks name matches above keyword matches', () => {
   const entries: CatalogEntry[] = [
     { id: 'a', name: 'BBC Sport', region: 'world', category: 'sports', language: 'en', feedUrl: 'https://a.test/rss' },
     { id: 'b', name: 'Sky Sports', region: 'world', category: 'sports', language: 'en', feedUrl: 'https://b.test/rss', keywords: ['bbc rival'] },
-    { id: 'c', name: 'NTV Spor', region: 'turkey', category: 'sports', language: 'tr', feedUrl: 'https://c.test/rss', keywords: ['spor'] },
+    { id: 'c', name: 'NTV Spor', region: 'tr', category: 'sports', language: 'tr', feedUrl: 'https://c.test/rss', keywords: ['spor'] },
   ];
 
   assert.deepEqual(searchCatalog(entries, 'bbc').map((e) => e.id), ['a', 'b']);
   assert.deepEqual(searchCatalog(entries, 'sports', { region: 'world' }).map((e) => e.id), ['b', 'a']);
-  assert.deepEqual(searchCatalog(entries, 'SPOR', { region: 'turkey' }).map((e) => e.id), ['c']);
+  assert.deepEqual(searchCatalog(entries, 'SPOR', { region: 'local', country: 'tr' }).map((e) => e.id), ['c']);
   assert.equal(searchCatalog(entries, '', { region: 'all' }).length, 3, 'a blank query lists everything');
   assert.equal(searchCatalog(entries, 'zzz').length, 0);
+});
+
+test('the local filter follows the chosen country', () => {
+  const sources: NewsSource[] = [
+    { ...source('trt', 'tr'), language: 'tr' },
+    { ...source('tagesschau', 'de'), language: 'de' },
+    { ...source('bbc-world', 'world'), language: 'en' },
+  ];
+
+  assert.deepEqual(
+    filterSources(sources, { region: 'local', language: 'all', country: 'tr' }).map((s) => s.id),
+    ['trt'],
+  );
+  assert.deepEqual(
+    filterSources(sources, { region: 'local', language: 'all', country: 'de' }).map((s) => s.id),
+    ['tagesschau'],
+    'the same stored filter means Germany once Germany is home',
+  );
+  assert.deepEqual(
+    filterSources(sources, { region: 'world', language: 'all', country: 'de' }).map((s) => s.id),
+    ['bbc-world'],
+    'worldwide is the same bucket whatever the country',
+  );
+  assert.equal(
+    filterSources(sources, { region: 'local', language: 'all', country: 'nl' }).length,
+    0,
+    'a country with no sources yet is empty, not silently widened',
+  );
+});
+
+test('the language filter offers only languages actually present', () => {
+  const sources: NewsSource[] = [
+    { ...source('trt', 'tr'), language: 'tr' },
+    { ...source('tagesschau', 'de'), language: 'de' },
+    { ...source('bbc', 'world'), language: 'en' },
+    { ...source('ntv', 'tr'), language: 'tr' },
+  ];
+
+  assert.deepEqual(languagesIn(sources), ['de', 'en', 'tr']);
+  assert.deepEqual(languagesIn([]), []);
+});
+
+test('every country has a name in both languages and a flag', () => {
+  for (const { code, flag } of COUNTRIES) {
+    assert.ok(STRINGS.en.countryName[code], `${code} has no English name`);
+    assert.ok(STRINGS.tr.countryName[code], `${code} has no Turkish name`);
+    assert.ok(flag.length > 0, `${code} has no flag`);
+    assert.ok(STRINGS.tr.languageName[languageForOrigin(code)], `${code}'s language is unnamed`);
+  }
+
+  assert.equal(DEFAULT_COUNTRY, 'tr', 'Türkiye stays the default');
+  assert.equal(COUNTRIES[0].code, 'tr', 'and leads the picker');
 });
 
 test('a source already in the list is flagged as added', () => {

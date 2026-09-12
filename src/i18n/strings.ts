@@ -1,4 +1,10 @@
-import type { LanguageFilter, Region, RegionFilter, SourceCategory, UiLanguage, UiLanguagePreference } from '../types';
+import type {
+  CountryCode,
+  SourceCategory,
+  SourceLanguage,
+  UiLanguage,
+  UiLanguagePreference,
+} from '../types';
 
 /** Reasons `addCustomSource` can reject a feed, mapped to text per language. */
 export type AddSourceError = 'name-required' | 'invalid-url' | 'duplicate';
@@ -90,9 +96,13 @@ export interface Strings {
   feedLanguage: string;
   uiLanguageOption: Record<UiLanguagePreference, string>;
 
-  regionFilter: Record<RegionFilter, string>;
-  languageFilterOption: Record<LanguageFilter, string>;
-  regionLabel: Record<Region, string>;
+  allFilter: string;
+  worldLabel: string;
+  countryGroup: string;
+  homeCountry: string;
+  allLanguages: string;
+  countryName: Record<CountryCode, string>;
+  languageName: Record<SourceLanguage, string>;
   categoryLabel: Record<SourceCategory, string>;
 
   justNow: string;
@@ -192,19 +202,31 @@ const en: Strings = {
     en: 'English',
   },
 
-  regionFilter: {
-    all: 'All',
-    turkey: 'Türkiye',
-    world: 'Worldwide',
+  allFilter: 'All',
+  worldLabel: 'Worldwide',
+  countryGroup: 'COUNTRY',
+  homeCountry: 'My country',
+  allLanguages: 'All languages',
+  countryName: {
+    tr: 'Türkiye',
+    az: 'Azerbaijan',
+    fr: 'France',
+    de: 'Germany',
+    it: 'Italy',
+    nl: 'Netherlands',
+    es: 'Spain',
+    gb: 'United Kingdom',
+    us: 'United States',
   },
-  languageFilterOption: {
-    all: 'All languages',
+  languageName: {
     tr: 'Türkçe',
     en: 'English',
-  },
-  regionLabel: {
-    turkey: 'Türkiye',
-    world: 'Worldwide',
+    de: 'Deutsch',
+    fr: 'Français',
+    es: 'Español',
+    it: 'Italiano',
+    nl: 'Nederlands',
+    az: 'Azərbaycanca',
   },
   categoryLabel: {
     general: 'General',
@@ -310,19 +332,31 @@ const tr: Strings = {
     en: 'English',
   },
 
-  regionFilter: {
-    all: 'Tümü',
-    turkey: 'Türkiye',
-    world: 'Dünya',
+  allFilter: 'Tümü',
+  worldLabel: 'Dünya',
+  countryGroup: 'ÜLKE',
+  homeCountry: 'Ülkem',
+  allLanguages: 'Tüm diller',
+  countryName: {
+    tr: 'Türkiye',
+    az: 'Azerbaycan',
+    fr: 'Fransa',
+    de: 'Almanya',
+    it: 'İtalya',
+    nl: 'Hollanda',
+    es: 'İspanya',
+    gb: 'Birleşik Krallık',
+    us: 'ABD',
   },
-  languageFilterOption: {
-    all: 'Tüm diller',
+  languageName: {
     tr: 'Türkçe',
     en: 'İngilizce',
-  },
-  regionLabel: {
-    turkey: 'Türkiye',
-    world: 'Dünya',
+    de: 'Almanca',
+    fr: 'Fransızca',
+    es: 'İspanyolca',
+    it: 'İtalyanca',
+    nl: 'Felemenkçe',
+    az: 'Azerbaycanca',
   },
   categoryLabel: {
     general: 'Genel',

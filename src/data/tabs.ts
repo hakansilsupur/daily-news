@@ -1,5 +1,5 @@
 import { filterSources } from './sources';
-import type { FeedTab, LanguageFilter, NewsSource, RegionFilter } from '../types';
+import type { CountryCode, FeedTab, LanguageFilter, NewsSource, RegionFilter } from '../types';
 
 /** The always-present first tab: everything, narrowed by the ad-hoc filters. */
 export const ALL_TAB_ID = 'all';
@@ -7,6 +7,7 @@ export const ALL_TAB_ID = 'all';
 export interface AdHocFilters {
   region: RegionFilter;
   language: LanguageFilter;
+  country: CountryCode;
   isEnabled: (id: string) => boolean;
 }
 
@@ -28,6 +29,7 @@ export function sourcesForTab(
     return filterSources(allSources, {
       region: filters.region,
       language: filters.language,
+      country: filters.country,
     }).filter((source) => filters.isEnabled(source.id));
   }
 

@@ -16,10 +16,16 @@ Built with Expo (SDK 57) + React Native + TypeScript.
 - **Two interface languages** — Türkçe and English, switched in the Sources sheet
   under `Dil / Language`. `System` follows the device locale. The choice is
   persisted and also drives relative timestamps (`2 saat önce` / `2h ago`).
-- **Region filter** — `All` / `Türkiye` / `Worldwide`, persisted between launches.
-- **Feed language filter** — `All` / `Türkçe` / `English`, applied on top of the
-  region filter using each source's `language`. It is independent of the
-  interface language, so you can read an English UI over Turkish feeds.
+- **Selectable home country** — Türkiye by default, changeable in the Sources
+  sheet to Azerbaijan, France, Germany, Italy, Netherlands, Spain, the UK or the
+  US. The directory carries local sources for each, and the feed's middle filter
+  becomes whichever country you chose.
+- **Region filter** — `All` / your country / `Worldwide`, persisted between
+  launches. It stores `local` rather than a country name, so switching country
+  re-points the filter instead of resetting it.
+- **Feed language filter** — `All` plus whichever languages your sources
+  actually publish in, applied on top of the region filter. It is independent of
+  the interface language, so you can read an English UI over Turkish feeds.
 - **Source filter** — every source has a toggle. Flip them from the chip row on
   the feed, or from the Sources sheet with `Select all` / `Clear` shortcuts.
 - **Find sources by search** — the Sources sheet opens a searchable directory of
@@ -143,7 +149,8 @@ src/
   i18n/
     strings.ts              every UI string, in Turkish and English
     index.ts                locale detection and language resolution
-  data/sources.ts           built-in feeds, tagged by region, category, language
+  data/countries.ts         selectable home countries, flags, default language
+  data/sources.ts           built-in feeds, tagged by origin, category, language
   data/catalog.ts           searchable directory of feeds you can add, + ranking
   data/tabs.ts              which sources a pinned tab (or the All tab) resolves to
   services/
@@ -158,6 +165,19 @@ src/
 tests/feed.test.mts         parser + merge/search/format unit tests
 scripts/check-feeds.mts     live feed health check
 ```
+
+## Countries
+
+A source's `region` is its origin: a country code (`tr`, `de`, `us`, …) or
+`world` for outlets that report globally rather than for one country's readers.
+The feed filter stores `local`, which resolves against the country you picked —
+so the same saved filter means Türkiye today and Germany after you switch, and
+no preference needs migrating when it changes.
+
+Adding a country is `src/data/countries.ts` (code, flag, default language), a
+name in both string tables, and directory entries in `src/data/catalog.ts`.
+Installs from before this existed are migrated on load: the stored `turkey`
+filter reads as `local`, and custom feeds tagged `turkey` become `tr`.
 
 ## Built-in sources
 

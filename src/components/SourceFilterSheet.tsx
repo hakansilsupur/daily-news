@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -15,10 +15,17 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SegmentedControl } from './SegmentedControl';
-import { localeTag, UI_LANGUAGE_PREFERENCES, type AddSourceError } from '../i18n';
+import { COUNTRIES } from '../data/countries';
+import { localeTag, originLabel, UI_LANGUAGE_PREFERENCES, type AddSourceError } from '../i18n';
 import type { NewsApp } from '../hooks/useNewsApp';
 import type { Theme } from '../theme';
-import type { LanguageFilter, NewsSource, Region, UiLanguagePreference } from '../types';
+import type {
+  CountryCode,
+  LanguageFilter,
+  NewsSource,
+  SourceOrigin,
+  UiLanguagePreference,
+} from '../types';
 
 interface Props {
   visible: boolean;
@@ -33,7 +40,11 @@ export function SourceFilterSheet({ visible, onClose, onFindSources, theme, app 
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
-  const [newRegion, setNewRegion] = useState<Region>('turkey');
+  const [newRegion, setNewRegion] = useState<SourceOrigin>(app.country);
+
+  // Changing country while the sheet is open must not leave the manual form
+  // tagging new feeds for the country the user just left.
+  useEffect(() => setNewRegion(app.country), [app.country]);
   const [formError, setFormError] = useState<AddSourceError | null>(null);
 
   const uiLanguageOptions: { value: UiLanguagePreference; label: string }[] =
@@ -43,14 +54,23 @@ export function SourceFilterSheet({ visible, onClose, onFindSources, theme, app 
     }));
 
   const feedLanguageOptions: { value: LanguageFilter; label: string }[] = [
-    { value: 'all', label: t.languageFilterOption.all },
-    { value: 'tr', label: t.languageFilterOption.tr },
-    { value: 'en', label: t.languageFilterOption.en },
+    { value: 'all', label: t.allLanguages },
+    ...app.availableLanguages.map((language) => ({
+      value: language as LanguageFilter,
+      label: t.languageName[language],
+    })),
   ];
 
-  const grouped: { region: Region; sources: NewsSource[] }[] = (
-    ['turkey', 'world'] as Region[]
-  )
+  // The user's own country first, then every other origin present, then world.
+  const origins: SourceOrigin[] = [
+    app.country,
+    ...[...new Set(app.regionSources.map((source) => source.region))]
+      .filter((origin) => origin !== app.country && origin !== 'world')
+      .sort(),
+    'world',
+  ];
+
+  const grouped: { region: SourceOrigin; sources: NewsSource[] }[] = origins
     .map((region) => ({
       region,
       sources: app.regionSources.filter((source) => source.region === region),
@@ -102,6 +122,41 @@ export function SourceFilterSheet({ visible, onClose, onFindSources, theme, app 
               keyboardShouldPersistTaps="handled"
             >
               <View style={styles.group}>
+                <Text style={[styles.groupTitle, { color: theme.textMuted }]}>{t.countryGroup}</Text>
+                <Text style={[styles.settingLabel, { color: theme.text }]}>{t.homeCountry}</Text>
+
+                <View style={styles.countryGrid}>
+                  {COUNTRIES.map(({ code, flag }) => {
+                    const selected = app.country === code;
+                    return (
+                      <Pressable
+                        key={code}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected }}
+                        accessibilityLabel={t.countryName[code]}
+                        onPress={() => app.setCountry(code)}
+                        style={[
+                          styles.countryChip,
+                          {
+                            borderColor: selected ? theme.accent : theme.border,
+                            backgroundColor: selected ? theme.accentSoft : theme.surface,
+                          },
+                        ]}
+                      >
+                        <Text style={styles.countryFlag}>{flag}</Text>
+                        <Text
+                          numberOfLines={1}
+                          style={[styles.countryName, { color: selected ? theme.accent : theme.text }]}
+                        >
+                          {t.countryName[code]}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.group}>
                 <Text style={[styles.groupTitle, { color: theme.textMuted }]}>{t.languageGroup}</Text>
 
                 <Text style={[styles.settingLabel, { color: theme.text }]}>{t.interfaceLanguage}</Text>
@@ -128,7 +183,7 @@ export function SourceFilterSheet({ visible, onClose, onFindSources, theme, app 
               {grouped.map((group) => (
                 <View key={group.region} style={styles.group}>
                   <Text style={[styles.groupTitle, { color: theme.textMuted }]}>
-                    {t.regionLabel[group.region].toLocaleUpperCase(localeTag(app.uiLanguage))}
+                    {originLabel(t, group.region).toLocaleUpperCase(localeTag(app.uiLanguage))}
                   </Text>
 
                   {group.sources.map((source) => {
@@ -207,7 +262,7 @@ export function SourceFilterSheet({ visible, onClose, onFindSources, theme, app 
                 />
 
                 <View style={styles.regionPicker}>
-                  {(['turkey', 'world'] as Region[]).map((region) => {
+                  {([app.country, 'world'] as SourceOrigin[]).map((region) => {
                     const selected = newRegion === region;
                     return (
                       <Pressable
@@ -222,7 +277,7 @@ export function SourceFilterSheet({ visible, onClose, onFindSources, theme, app 
                         ]}
                       >
                         <Text style={[styles.regionOptionText, { color: selected ? theme.accent : theme.textMuted }]}>
-                          {t.regionLabel[region]}
+                          {originLabel(t, region)}
                         </Text>
                       </Pressable>
                     );
@@ -326,6 +381,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginTop: 2,
+  },
+  countryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  countryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  countryFlag: {
+    fontSize: 15,
+  },
+  countryName: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   row: {
     flexDirection: 'row',

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { BUILT_IN_SOURCES, filterSources } from '../data/sources';
+import { DEFAULT_COUNTRY, languageForOrigin } from '../data/countries';
+import { BUILT_IN_SOURCES, filterSources, languagesIn } from '../data/sources';
 import { ALL_TAB_ID, pruneTab, sourcesForTab } from '../data/tabs';
 import {
   resolveLanguage,
@@ -13,12 +14,14 @@ import { fetchAllFeeds, mergeAndSort, searchArticles } from '../services/newsSer
 import * as prefs from '../storage/prefs';
 import type {
   Article,
+  CountryCode,
   FeedTab,
   LanguageFilter,
   NewsSource,
   RegionFilter,
   SourceCategory,
   SourceLanguage,
+  SourceOrigin,
   UiLanguage,
   UiLanguagePreference,
 } from '../types';
@@ -51,9 +54,15 @@ export interface NewsApp {
   region: RegionFilter;
   setRegion: (region: RegionFilter) => void;
 
+  /** The user's home country — what the `local` region filter resolves to. */
+  country: CountryCode;
+  setCountry: (country: CountryCode) => void;
+
   /** Language of the sources to show — independent of the interface language. */
   languageFilter: LanguageFilter;
   setLanguageFilter: (filter: LanguageFilter) => void;
+  /** Languages actually present in the source list, for the filter's options. */
+  availableLanguages: SourceLanguage[];
 
   /** What the user chose, including `system`. */
   uiLanguagePreference: UiLanguagePreference;
@@ -77,7 +86,7 @@ export interface NewsApp {
   addCustomSource: (input: {
     name: string;
     feedUrl: string;
-    region: 'turkey' | 'world';
+    region: SourceOrigin;
     /** Carried over when the source came from the directory; guessed otherwise. */
     language?: SourceLanguage;
     category?: SourceCategory;
@@ -94,6 +103,7 @@ export function useNewsApp(): NewsApp {
   const [ready, setReady] = useState(false);
   const [region, setRegionState] = useState<RegionFilter>('all');
   const [languageFilter, setLanguageFilterState] = useState<LanguageFilter>('all');
+  const [country, setCountryState] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [feedTabs, setFeedTabs] = useState<FeedTab[]>([]);
   const [selectedTabId, setSelectedTabId] = useState<string>(ALL_TAB_ID);
   const [uiLanguagePreference, setUiLanguagePreferenceState] = useState<UiLanguagePreference>('system');
@@ -125,6 +135,7 @@ export function useNewsApp(): NewsApp {
         storedLanguageFilter,
         storedTabs,
         storedSelectedTab,
+        storedCountry,
       ] = await Promise.all([
         prefs.loadRegion(),
         prefs.loadEnabledSourceIds(),
@@ -134,6 +145,7 @@ export function useNewsApp(): NewsApp {
         prefs.loadLanguageFilter(),
         prefs.loadFeedTabs(),
         prefs.loadSelectedTab(),
+        prefs.loadCountry(),
       ]);
 
       if (cancelled) return;
@@ -143,6 +155,7 @@ export function useNewsApp(): NewsApp {
       setSavedArticles(storedSaved);
       setUiLanguagePreferenceState(storedUiLanguage);
       setLanguageFilterState(storedLanguageFilter);
+      setCountryState(storedCountry);
       setFeedTabs(storedTabs);
       // A tab deleted on a previous run must not leave the feed pointing at nothing.
       setSelectedTabId(
@@ -169,9 +182,11 @@ export function useNewsApp(): NewsApp {
   );
 
   const regionSources = useMemo(
-    () => filterSources(allSources, { region, language: languageFilter }),
-    [allSources, region, languageFilter],
+    () => filterSources(allSources, { region, language: languageFilter, country }),
+    [allSources, region, languageFilter, country],
   );
+
+  const availableLanguages = useMemo(() => languagesIn(allSources), [allSources]);
 
   const selectedTab = useMemo(
     () => feedTabs.find((tab) => tab.id === selectedTabId) ?? null,
@@ -179,8 +194,14 @@ export function useNewsApp(): NewsApp {
   );
 
   const activeSources = useMemo(
-    () => sourcesForTab(allSources, selectedTab, { region, language: languageFilter, isEnabled: isSourceEnabled }),
-    [allSources, selectedTab, region, languageFilter, isSourceEnabled],
+    () =>
+      sourcesForTab(allSources, selectedTab, {
+        region,
+        language: languageFilter,
+        country,
+        isEnabled: isSourceEnabled,
+      }),
+    [allSources, selectedTab, region, languageFilter, country, isSourceEnabled],
   );
 
   // Refetch whenever the effective source set changes, keyed on ids so that a
@@ -229,6 +250,11 @@ export function useNewsApp(): NewsApp {
   const setRegion = useCallback((next: RegionFilter) => {
     setRegionState(next);
     void prefs.saveRegion(next);
+  }, []);
+
+  const setCountry = useCallback((next: CountryCode) => {
+    setCountryState(next);
+    void prefs.saveCountry(next);
   }, []);
 
   const setLanguageFilter = useCallback((next: LanguageFilter) => {
@@ -333,7 +359,7 @@ export function useNewsApp(): NewsApp {
           feedUrl: trimmedUrl,
           region: sourceRegion,
           category: category ?? 'general',
-          language: language ?? (sourceRegion === 'turkey' ? 'tr' : 'en'),
+          language: language ?? languageForOrigin(sourceRegion),
           custom: true,
         },
       ]);
@@ -401,8 +427,11 @@ export function useNewsApp(): NewsApp {
     removeFeedTab,
     region,
     setRegion,
+    country,
+    setCountry,
     languageFilter,
     setLanguageFilter,
+    availableLanguages,
     uiLanguagePreference,
     uiLanguage,
     setUiLanguagePreference,
