@@ -56,12 +56,13 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
         theme={theme}
         language={app.uiLanguage}
         strings={t}
+        translate={app.translatePreviews}
         saved={app.isSaved(item.id)}
         onPress={openArticle}
         onToggleSave={app.toggleSaved}
       />
     ),
-    [theme, app.uiLanguage, t, app.isSaved, app.toggleSaved],
+    [theme, app.uiLanguage, t, app.translatePreviews, app.isSaved, app.toggleSaved],
   );
 
   const header = (

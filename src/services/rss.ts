@@ -128,6 +128,7 @@ function toArticle(entry: Record<string, unknown>, source: NewsSource): Article 
     sourceId: source.id,
     sourceName: source.name,
     region: source.region,
+    language: source.language,
   };
 }
 

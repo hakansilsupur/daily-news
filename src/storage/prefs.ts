@@ -22,6 +22,8 @@ const KEYS = {
   feedTabs: 'prefs:feedTabs',
   selectedTab: 'prefs:selectedTab',
   country: 'prefs:country',
+  translatePreviews: 'prefs:translatePreviews',
+  translations: 'prefs:translations',
 } as const;
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -88,6 +90,30 @@ export const saveUiLanguage = (preference: UiLanguagePreference) =>
 
 export const loadLanguageFilter = () => readJson<LanguageFilter>(KEYS.languageFilter, 'all');
 export const saveLanguageFilter = (filter: LanguageFilter) => writeJson(KEYS.languageFilter, filter);
+
+export const loadTranslatePreviews = () => readJson<boolean>(KEYS.translatePreviews, true);
+export const saveTranslatePreviews = (enabled: boolean) =>
+  writeJson(KEYS.translatePreviews, enabled);
+
+/**
+ * Translated previews, keyed by `<language>:<articleId>`. Cached on the device
+ * so a headline is translated once rather than on every scroll back, and capped
+ * so the store cannot grow without bound.
+ */
+export const TRANSLATION_CACHE_LIMIT = 500;
+
+export const loadTranslations = () =>
+  readJson<Record<string, { title: string; summary: string }>>(KEYS.translations, {});
+
+export const saveTranslations = (entries: Record<string, { title: string; summary: string }>) => {
+  const keys = Object.keys(entries);
+  const trimmed =
+    keys.length <= TRANSLATION_CACHE_LIMIT
+      ? entries
+      : Object.fromEntries(keys.slice(keys.length - TRANSLATION_CACHE_LIMIT).map((key) => [key, entries[key]]));
+
+  return writeJson(KEYS.translations, trimmed);
+};
 
 export const loadFeedTabs = () => readJson<FeedTab[]>(KEYS.feedTabs, []);
 export const saveFeedTabs = (tabs: FeedTab[]) => writeJson(KEYS.feedTabs, tabs);

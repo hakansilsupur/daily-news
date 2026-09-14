@@ -13,6 +13,12 @@ Built with Expo (SDK 57) + React Native + TypeScript.
   on X. `All` is always first; `Add +` opens a sheet where you name a tab and
   tick the sources it holds. Long-press a tab to edit or delete it. The choice
   of tab persists between launches.
+- **Translated previews** — with `Başlıkları çevir` on (the default), headlines
+  and summaries are machine-translated into the interface language, so an
+  English or German feed is skimmable in Turkish. Translated cards are labelled
+  `çeviri`; tapping through opens the publisher's article in its original
+  language. Translations are cached on the device, so each headline costs one
+  request ever, and only cards you actually scroll to are translated.
 - **Two interface languages** — Türkçe and English, switched in the Sources sheet
   under `Dil / Language`. `System` follows the device locale. The choice is
   persisted and also drives relative timestamps (`2 saat önce` / `2h ago`).
@@ -156,6 +162,7 @@ src/
   services/
     rss.ts                  fetch + parse RSS 2.0 / RSS 1.0 (RDF) / Atom
     discovery.ts            finds a site's feeds from its address
+    translate.ts            keyless preview translation, with a fallback engine
     newsService.ts          parallel fetch, dedupe, sort, search, timestamps
     openArticle.ts          in-app browser with system-browser fallback
   storage/prefs.ts          AsyncStorage persistence (filters, language, tabs, feeds, saves)
@@ -165,6 +172,27 @@ src/
 tests/feed.test.mts         parser + merge/search/format unit tests
 scripts/check-feeds.mts     live feed health check
 ```
+
+## Preview translation
+
+`src/services/translate.ts` uses the public `translate.googleapis.com` endpoint:
+no API key, no account, no backend, matching the rest of the app. That endpoint
+is unofficial and throttles by IP, so the whole path is best-effort:
+
+- A failure, a `429`, or an unparseable body leaves the publisher's own words on
+  screen. Translation never blocks rendering and never surfaces an error.
+- When the primary engine declines, a headline-only fallback via MyMemory is
+  tried, but only when the source language is known (it needs an explicit
+  language pair) and only within its ~500-character anonymous limit. Its quota
+  notices arrive as if they were translated text, so they are filtered out
+  explicitly rather than shown as a headline.
+- Requests are capped at three at a time, keyed per article and language, and
+  cached in AsyncStorage (500 entries) so scrolling back costs nothing.
+
+> **Note:** neither endpoint is reachable from the build sandbox — the primary
+> returns `429` for datacentre IPs and the fallback is blocked outright — so the
+> network path is unverified. The response parsers, URL building, language
+> skipping and quota-notice filtering are unit-tested against fixtures.
 
 ## Countries
 

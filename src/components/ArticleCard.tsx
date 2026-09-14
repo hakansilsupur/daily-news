@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { memo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useTranslatedPreview } from '../hooks/useTranslatedPreview';
 import type { Strings } from '../i18n';
 import { formatRelativeTime } from '../services/newsService';
 import type { Theme } from '../theme';
@@ -12,13 +13,25 @@ interface Props {
   theme: Theme;
   language: UiLanguage;
   strings: Strings;
+  /** Machine-translate the preview into `language` when it is in another one. */
+  translate: boolean;
   saved: boolean;
   onPress: (article: Article) => void;
   onToggleSave: (article: Article) => void;
 }
 
-function ArticleCardBase({ article, theme, language, strings, saved, onPress, onToggleSave }: Props) {
+function ArticleCardBase({
+  article,
+  theme,
+  language,
+  strings,
+  translate,
+  saved,
+  onPress,
+  onToggleSave,
+}: Props) {
   const timeLabel = formatRelativeTime(article.publishedAt, Date.now(), language);
+  const preview = useTranslatedPreview(article, language, translate);
 
   return (
     <Pressable
@@ -50,15 +63,21 @@ function ArticleCardBase({ article, theme, language, strings, saved, onPress, on
           {timeLabel ? (
             <Text style={[styles.time, { color: theme.textMuted }]}>· {timeLabel}</Text>
           ) : null}
+          {preview.translated ? (
+            // Says plainly that these words are the machine's, not the publisher's.
+            <Text style={[styles.badge, { color: theme.textMuted, borderColor: theme.border }]}>
+              {strings.translatedBadge}
+            </Text>
+          ) : null}
         </View>
 
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={3}>
-          {article.title}
+          {preview.title}
         </Text>
 
-        {article.summary ? (
+        {preview.summary ? (
           <Text style={[styles.summary, { color: theme.textMuted }]} numberOfLines={2}>
-            {article.summary}
+            {preview.summary}
           </Text>
         ) : null}
       </View>
@@ -115,6 +134,15 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 12,
+  },
+  badge: {
+    fontSize: 10,
+    fontWeight: '600',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    overflow: 'hidden',
   },
   title: {
     fontSize: 15,

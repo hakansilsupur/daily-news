@@ -178,6 +178,22 @@ export function SourceFilterSheet({ visible, onClose, onFindSources, theme, app 
                   compact
                   flush
                 />
+
+                <View style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                  <View style={styles.rowText}>
+                    <Text style={[styles.rowTitle, { color: theme.text }]}>{t.translatePreviews}</Text>
+                    <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                      {t.translatePreviewsHint}
+                    </Text>
+                  </View>
+
+                  <Switch
+                    value={app.translatePreviews}
+                    onValueChange={app.setTranslatePreviews}
+                    trackColor={{ true: theme.accent, false: theme.surfaceAlt }}
+                    thumbColor={Platform.OS === 'android' ? '#ffffff' : undefined}
+                  />
+                </View>
               </View>
 
               {grouped.map((group) => (

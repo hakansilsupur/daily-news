@@ -10,6 +10,7 @@ import {
   type FeedTabError,
   type Strings,
 } from '../i18n';
+import { hydrateTranslationCache } from './useTranslatedPreview';
 import { fetchAllFeeds, mergeAndSort, searchArticles } from '../services/newsService';
 import * as prefs from '../storage/prefs';
 import type {
@@ -72,6 +73,10 @@ export interface NewsApp {
   /** Translated strings for `uiLanguage`. */
   t: Strings;
 
+  /** Machine-translate headlines and summaries into the interface language. */
+  translatePreviews: boolean;
+  setTranslatePreviews: (enabled: boolean) => void;
+
   query: string;
   setQuery: (query: string) => void;
 
@@ -104,6 +109,7 @@ export function useNewsApp(): NewsApp {
   const [region, setRegionState] = useState<RegionFilter>('all');
   const [languageFilter, setLanguageFilterState] = useState<LanguageFilter>('all');
   const [country, setCountryState] = useState<CountryCode>(DEFAULT_COUNTRY);
+  const [translatePreviews, setTranslatePreviewsState] = useState(true);
   const [feedTabs, setFeedTabs] = useState<FeedTab[]>([]);
   const [selectedTabId, setSelectedTabId] = useState<string>(ALL_TAB_ID);
   const [uiLanguagePreference, setUiLanguagePreferenceState] = useState<UiLanguagePreference>('system');
@@ -125,6 +131,10 @@ export function useNewsApp(): NewsApp {
   useEffect(() => {
     let cancelled = false;
 
+    // Translations are read once here so a cached card renders without a flash
+    // of the untranslated headline.
+    void hydrateTranslationCache();
+
     (async () => {
       const [
         storedRegion,
@@ -136,6 +146,7 @@ export function useNewsApp(): NewsApp {
         storedTabs,
         storedSelectedTab,
         storedCountry,
+        storedTranslate,
       ] = await Promise.all([
         prefs.loadRegion(),
         prefs.loadEnabledSourceIds(),
@@ -146,6 +157,7 @@ export function useNewsApp(): NewsApp {
         prefs.loadFeedTabs(),
         prefs.loadSelectedTab(),
         prefs.loadCountry(),
+        prefs.loadTranslatePreviews(),
       ]);
 
       if (cancelled) return;
@@ -156,6 +168,7 @@ export function useNewsApp(): NewsApp {
       setUiLanguagePreferenceState(storedUiLanguage);
       setLanguageFilterState(storedLanguageFilter);
       setCountryState(storedCountry);
+      setTranslatePreviewsState(storedTranslate);
       setFeedTabs(storedTabs);
       // A tab deleted on a previous run must not leave the feed pointing at nothing.
       setSelectedTabId(
@@ -250,6 +263,11 @@ export function useNewsApp(): NewsApp {
   const setRegion = useCallback((next: RegionFilter) => {
     setRegionState(next);
     void prefs.saveRegion(next);
+  }, []);
+
+  const setTranslatePreviews = useCallback((enabled: boolean) => {
+    setTranslatePreviewsState(enabled);
+    void prefs.saveTranslatePreviews(enabled);
   }, []);
 
   const setCountry = useCallback((next: CountryCode) => {
@@ -436,6 +454,8 @@ export function useNewsApp(): NewsApp {
     uiLanguage,
     setUiLanguagePreference,
     t,
+    translatePreviews,
+    setTranslatePreviews,
     query,
     setQuery,
     articles,

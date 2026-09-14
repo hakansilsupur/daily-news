@@ -91,6 +91,10 @@ export interface Strings {
   editTabAction: string;
   feedTabError: Record<FeedTabError, string>;
 
+  translatePreviews: string;
+  translatePreviewsHint: string;
+  translatedBadge: string;
+
   languageGroup: string;
   interfaceLanguage: string;
   feedLanguage: string;
@@ -192,6 +196,11 @@ const en: Strings = {
     'name-required': 'Give the tab a name.',
     'no-sources': 'Pick at least one source.',
   },
+
+  translatePreviews: 'Translate headlines',
+  translatePreviewsHint:
+    'Machine-translates headlines and summaries into the app language. Articles open in the original.',
+  translatedBadge: 'translated',
 
   languageGroup: 'LANGUAGE',
   interfaceLanguage: 'App language',
@@ -322,6 +331,11 @@ const tr: Strings = {
     'name-required': 'Sekmeye bir ad verin.',
     'no-sources': 'En az bir kaynak seçin.',
   },
+
+  translatePreviews: 'Başlıkları çevir',
+  translatePreviewsHint:
+    'Başlıkları ve özetleri uygulama diline makineyle çevirir. Haberler özgün dilinde açılır.',
+  translatedBadge: 'çeviri',
 
   languageGroup: 'DİL',
   interfaceLanguage: 'Uygulama dili',

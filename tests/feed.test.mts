@@ -19,6 +19,14 @@ import {
   searchArticles,
 } from '../src/services/newsService';
 import { parseFeed, parseFeedTitle, stripHtml } from '../src/services/rss';
+import {
+  buildFallbackUrl,
+  buildTranslateUrl,
+  cacheKey,
+  needsTranslation,
+  parseFallbackResponse,
+  parseTranslateResponse,
+} from '../src/services/translate';
 import type { NewsSource, SourceOrigin } from '../src/types';
 
 const source = (id: string, region: SourceOrigin): NewsSource => ({
@@ -387,6 +395,69 @@ test('common feed paths are probed against the site root', () => {
 test('parseFeedTitle names a discovered feed', () => {
   assert.equal(parseFeedTitle(RSS_2), 'Test');
   assert.equal(parseFeedTitle('<html><body>not a feed</body></html>'), '');
+});
+
+test('translation responses are read back into one string', () => {
+  const body = JSON.stringify([
+    [
+      ['Rusya ve Ukrayna ', 'Russia and Ukraine ', null, null, 10],
+      ['yeni görüşmelerde anlaştı.', 'agree new talks.', null, null, 3],
+    ],
+    null,
+    'en',
+  ]);
+
+  assert.equal(parseTranslateResponse(body), 'Rusya ve Ukrayna yeni görüşmelerde anlaştı.');
+});
+
+test('a broken translation response yields nothing rather than garbage', () => {
+  assert.equal(parseTranslateResponse('<html>429 Too Many Requests</html>'), null);
+  assert.equal(parseTranslateResponse('{}'), null);
+  assert.equal(parseTranslateResponse('[null,null,"en"]'), null);
+  assert.equal(parseTranslateResponse(JSON.stringify([[['   ', ' ', null]]])), null);
+});
+
+test('only previews in another language are translated', () => {
+  assert.equal(needsTranslation('en', 'tr', 'Hello'), true);
+  assert.equal(needsTranslation('tr', 'tr', 'Merhaba'), false, 'no round trip for Turkish in Turkish');
+  assert.equal(needsTranslation('en', 'tr', '   '), false, 'empty text needs nothing');
+  assert.equal(needsTranslation(undefined, 'tr', 'Hello'), true, 'unknown language is worth a try');
+});
+
+test('the translate URL carries the target language and is length-capped', () => {
+  const url = new URL(buildTranslateUrl('Hello world', 'tr'));
+
+  assert.equal(url.searchParams.get('tl'), 'tr');
+  assert.equal(url.searchParams.get('sl'), 'auto');
+  assert.equal(url.searchParams.get('q'), 'Hello world');
+
+  const long = new URL(buildTranslateUrl('x'.repeat(2000), 'en'));
+  assert.equal(long.searchParams.get('q')?.length, 900);
+});
+
+test('the fallback engine is read carefully, quota notices included', () => {
+  const ok = JSON.stringify({
+    responseStatus: 200,
+    responseData: { translatedText: 'Rusya ve Ukrayna anlaştı' },
+  });
+  assert.equal(parseFallbackResponse(ok), 'Rusya ve Ukrayna anlaştı');
+
+  const quota = JSON.stringify({
+    responseStatus: 200,
+    responseData: { translatedText: 'MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS' },
+  });
+  assert.equal(parseFallbackResponse(quota), null, 'a quota notice is not a translation');
+
+  assert.equal(parseFallbackResponse(JSON.stringify({ responseStatus: 403 })), null);
+  assert.equal(parseFallbackResponse('not json'), null);
+
+  const url = new URL(buildFallbackUrl('Hello', 'tr', 'en'));
+  assert.equal(url.searchParams.get('langpair'), 'en|tr');
+});
+
+test('translation cache keys are per language', () => {
+  assert.equal(cacheKey('bbc:1', 'tr'), 'tr:bbc:1');
+  assert.notEqual(cacheKey('bbc:1', 'tr'), cacheKey('bbc:1', 'en'));
 });
 
 test('stripHtml removes scripts and decodes entities', () => {

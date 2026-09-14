@@ -50,6 +50,8 @@ export interface Article {
   sourceId: string;
   sourceName: string;
   region: SourceOrigin;
+  /** The source's language — decides whether a preview needs translating. */
+  language?: SourceLanguage;
 }
 
 /**
