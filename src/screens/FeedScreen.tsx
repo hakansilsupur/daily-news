@@ -18,6 +18,7 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { SourceChips } from '../components/SourceChips';
 import { TranslationChips } from '../components/TranslationChips';
 import type { NewsApp } from '../hooks/useNewsApp';
+import { useTranslationThrottled } from '../hooks/useTranslatedPreview';
 import { regionFilterLabel } from '../i18n';
 import { formatRelativeTime } from '../services/newsService';
 import { openArticle } from '../services/openArticle';
@@ -35,6 +36,7 @@ interface Props {
 export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: Props) {
   const { t, selectedTab } = app;
   const failedCount = Object.keys(app.errors).length;
+  const translationThrottled = useTranslationThrottled();
 
   const regionOptions: { value: RegionFilter; label: string }[] = (
     ['all', 'local', 'world'] as RegionFilter[]
@@ -148,6 +150,10 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
         <Text style={[styles.warning, { color: theme.danger }]}>
           {t.sourcesUnreachable(failedCount)}
         </Text>
+      ) : null}
+
+      {translationThrottled && app.translatePreviews ? (
+        <Text style={[styles.warning, { color: theme.textMuted }]}>{t.translationPaused}</Text>
       ) : null}
     </View>
   );

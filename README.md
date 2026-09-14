@@ -193,13 +193,20 @@ is unofficial and throttles by IP, so the whole path is best-effort:
 
 - A failure, a `429`, or an unparseable body leaves the publisher's own words on
   screen. Translation never blocks rendering and never surfaces an error.
+- A refusal starts a **cooldown** — one minute, doubling up to fifteen while it
+  persists — during which nothing is sent at all. Hammering a throttled endpoint
+  only extends the block, and a hundred articles arriving at once (switching
+  country, say) is exactly the burst that triggers it. Cards retry when the
+  cooldown lapses, and the feed says it is waiting rather than looking broken.
+- Requests are spaced at least 200ms apart, two at a time, and a card costs one
+  request rather than two: title and summary are translated together.
 - When the primary engine declines, a headline-only fallback via MyMemory is
   tried, but only when the source language is known (it needs an explicit
   language pair) and only within its ~500-character anonymous limit. Its quota
   notices arrive as if they were translated text, so they are filtered out
   explicitly rather than shown as a headline.
-- Requests are capped at three at a time, keyed per article and language, and
-  cached in AsyncStorage (500 entries) so scrolling back costs nothing.
+- Results are keyed per article and language and cached in AsyncStorage (500
+  entries), so scrolling back costs nothing.
 
 > **Note:** neither endpoint is reachable from the build sandbox — the primary
 > returns `429` for datacentre IPs and the fallback is blocked outright — so the

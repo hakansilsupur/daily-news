@@ -30,9 +30,15 @@ import {
   buildFallbackUrl,
   buildTranslateUrl,
   cacheKey,
+  isThrottled,
+  looksThrottled,
   needsTranslation,
+  noteThrottled,
+  noteTranslationSuccess,
   parseFallbackResponse,
   parseTranslateResponse,
+  resetThrottle,
+  throttleRetryDelay,
 } from '../src/services/translate';
 import type { NewsSource, SourceOrigin } from '../src/types';
 
@@ -460,6 +466,34 @@ test('the fallback engine is read carefully, quota notices included', () => {
 
   const url = new URL(buildFallbackUrl('Hello', 'tr', 'en'));
   assert.equal(url.searchParams.get('langpair'), 'en|tr');
+});
+
+test('a refusal starts a cooldown that backs off and clears on success', () => {
+  const now = Date.parse('2026-09-14T22:10:00Z');
+  resetThrottle();
+
+  assert.equal(isThrottled(now), false, 'nothing is throttled to begin with');
+
+  noteThrottled(now);
+  assert.equal(isThrottled(now + 30_000), true, 'the first refusal buys a minute of quiet');
+  assert.equal(isThrottled(now + 61_000), false);
+
+  noteThrottled(now);
+  assert.equal(isThrottled(now + 61_000), true, 'a second refusal doubles the wait');
+  assert.ok(throttleRetryDelay(now) > 60_000);
+
+  noteTranslationSuccess();
+  assert.equal(isThrottled(now), false, 'one good answer clears it');
+  assert.equal(throttleRetryDelay(now), 0);
+
+  resetThrottle();
+});
+
+test('a refusal page is told apart from an unparseable translation', () => {
+  assert.equal(looksThrottled('<html><head><title>Sorry...</title>'), true);
+  assert.equal(looksThrottled('your computer or network may be sending automated queries'), true);
+  assert.equal(looksThrottled('[[["merhaba","hello"]]]'), false, 'a real answer is not a refusal');
+  assert.equal(looksThrottled(''), false);
 });
 
 test('translation cache keys are per language', () => {

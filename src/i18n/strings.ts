@@ -95,6 +95,7 @@ export interface Strings {
   translatePreviewsHint: string;
   translationLanguage: string;
   originalLanguage: string;
+  translationPaused: string;
   translatedBadge: string;
 
   languageGroup: string;
@@ -204,6 +205,7 @@ const en: Strings = {
     'Machine-translates headlines and summaries. Articles open in the original.',
   translationLanguage: 'Translate into',
   originalLanguage: 'Original',
+  translationPaused: 'The translation service is busy — headlines will be retried shortly.',
   translatedBadge: 'translated',
 
   languageGroup: 'LANGUAGE',
@@ -349,6 +351,7 @@ const tr: Strings = {
     'Başlıkları ve özetleri makineyle çevirir. Haberler özgün dilinde açılır.',
   translationLanguage: 'Çeviri dili',
   originalLanguage: 'Özgün',
+  translationPaused: 'Çeviri servisi meşgul — başlıklar birazdan yeniden denenecek.',
   translatedBadge: 'çeviri',
 
   languageGroup: 'DİL',

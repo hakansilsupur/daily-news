@@ -136,6 +136,8 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 12,
+    // A long source name must not squeeze "az önce" down to "az".
+    flexShrink: 0,
   },
   badge: {
     fontSize: 10,
@@ -145,6 +147,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 1,
     overflow: 'hidden',
+    flexShrink: 0,
   },
   title: {
     fontSize: 15,

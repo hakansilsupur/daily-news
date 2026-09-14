@@ -15,7 +15,12 @@ import type { SourceLanguage, TranslationLanguage } from '../types';
  */
 const ENDPOINT = 'https://translate.googleapis.com/translate_a/single';
 const TIMEOUT_MS = 8000;
-const MAX_CONCURRENT = 3;
+const MAX_CONCURRENT = 2;
+/** Minimum spacing between requests, so a screenful does not arrive as a burst. */
+const MIN_REQUEST_GAP_MS = 200;
+/** How long to stop asking after being throttled, doubling while it persists. */
+const COOLDOWN_MS = 60_000;
+const COOLDOWN_MAX_MS = 15 * 60_000;
 /** Anything longer is truncated; the endpoint rejects very long queries. */
 const MAX_CHARS = 900;
 
@@ -105,10 +110,65 @@ export function needsTranslation(
   return sourceLanguage !== target;
 }
 
+/**
+ * Throttle state.
+ *
+ * The endpoint answers a burst with `429` and an HTML page rather than a
+ * translation. Hammering it then only extends the block, and every card in view
+ * fails at once — which is what a hundred fresh articles arriving together (say,
+ * after switching country) would otherwise cause. So a refusal starts a
+ * cooldown, doubling while it persists, during which nothing is sent at all.
+ */
+let cooldownUntil = 0;
+let cooldownStreak = 0;
+
+/** Lets the feed say it is waiting rather than looking like the feature broke. */
+const listeners = new Set<() => void>();
+
+export function subscribeThrottle(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function emitThrottleChange(): void {
+  for (const listener of listeners) listener();
+}
+
+export function isThrottled(now: number = Date.now()): boolean {
+  return now < cooldownUntil;
+}
+
+/** Milliseconds until it is worth trying again. */
+export function throttleRetryDelay(now: number = Date.now()): number {
+  return Math.max(0, cooldownUntil - now);
+}
+
+export function noteThrottled(now: number = Date.now()): void {
+  cooldownStreak += 1;
+  cooldownUntil = now + Math.min(COOLDOWN_MS * 2 ** (cooldownStreak - 1), COOLDOWN_MAX_MS);
+  emitThrottleChange();
+}
+
+export function noteTranslationSuccess(): void {
+  const wasThrottled = cooldownUntil !== 0;
+  cooldownStreak = 0;
+  cooldownUntil = 0;
+  if (wasThrottled) emitThrottleChange();
+}
+
+/** Clears the cooldown and its backoff — for tests, and a future manual retry. */
+export const resetThrottle = noteTranslationSuccess;
+
+/** A refusal page, rather than a translation that happened to be unparseable. */
+export function looksThrottled(body: string): boolean {
+  return /<html|We're sorry|unusual traffic|automated queries/i.test(body);
+}
+
 let active = 0;
+let lastStart = 0;
 const waiting: (() => void)[] = [];
 
-/** Keeps the endpoint to a few requests at a time, so a fast scroll cannot flood it. */
+/** Keeps the endpoint to a couple of requests at a time, evenly spaced. */
 async function withSlot<T>(run: () => Promise<T>): Promise<T> {
   if (active >= MAX_CONCURRENT) {
     await new Promise<void>((resolve) => waiting.push(resolve));
@@ -116,6 +176,9 @@ async function withSlot<T>(run: () => Promise<T>): Promise<T> {
   active += 1;
 
   try {
+    const gap = lastStart + MIN_REQUEST_GAP_MS - Date.now();
+    if (gap > 0) await new Promise((resolve) => setTimeout(resolve, gap));
+    lastStart = Date.now();
     return await run();
   } finally {
     active -= 1;
@@ -128,6 +191,8 @@ async function requestTranslation(
   target: TranslationLanguage,
   signal?: AbortSignal,
 ): Promise<string | null> {
+  if (isThrottled()) return null;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   const onAbort = () => controller.abort();
@@ -138,8 +203,22 @@ async function requestTranslation(
       signal: controller.signal,
       headers: { Accept: 'application/json' },
     });
-    if (!response.ok) return null;
-    return parseTranslateResponse(await response.text());
+
+    if (!response.ok) {
+      // 429 is the usual one, but any refusal means backing off beats retrying.
+      noteThrottled();
+      return null;
+    }
+
+    const body = await response.text();
+    const translated = parseTranslateResponse(body);
+    if (translated) {
+      noteTranslationSuccess();
+      return translated;
+    }
+
+    if (looksThrottled(body)) noteThrottled();
+    return null;
   } catch {
     return null;
   } finally {
@@ -179,16 +258,19 @@ export interface TranslatedPreview {
   summary: string;
 }
 
+/** Separator used to translate a card's title and summary in one request. */
+const JOINER = '\n';
+
 /**
  * Translates one card.
  *
- * Title and summary are sent as separate requests rather than joined by a
- * separator: the engine does not reliably preserve one, and a fused response
- * cannot be split back apart, which showed up as cards whose headline was
- * translated while the summary below it stayed in the original language — or
- * worse, whose headline silently contained the summary too.
- *
- * Both are cached together, so the extra request is paid once per article.
+ * Title and summary go in a single request, joined by a newline the engine
+ * usually preserves — usually, not always. When it comes back fused, the two
+ * fields cannot be told apart, so they are re-requested separately rather than
+ * guessed at; that costs two extra calls, but only for the minority of cards
+ * that need it. Sending both fields separately every time was worse: it doubled
+ * the request volume against an endpoint that throttles by IP, which is enough
+ * to turn a whole screen untranslated.
  */
 export async function translatePreview(
   preview: TranslatedPreview,
@@ -200,22 +282,36 @@ export async function translatePreview(
   const summary = preview.summary.trim();
   if (!title && !summary) return null;
 
-  const [translatedTitle, translatedSummary] = await Promise.all([
-    title ? withSlot(() => requestTranslation(title, target, signal)) : Promise.resolve(''),
-    summary ? withSlot(() => requestTranslation(summary, target, signal)) : Promise.resolve(''),
-  ]);
+  const joined = summary ? `${title}${JOINER}${summary}` : title;
+  const translated = await withSlot(() => requestTranslation(joined, target, signal));
 
-  if (translatedTitle === null && translatedSummary === null) {
+  if (!translated) {
     // Primary engine unavailable: fall back to a headline-only translation.
     if (!title || !sourceLanguage || sourceLanguage === target) return null;
     const fallback = await withSlot(() => requestFallback(title, target, sourceLanguage, signal));
     return fallback ? { title: fallback.trim(), summary: '' } : null;
   }
 
-  return {
-    title: translatedTitle?.trim() ?? '',
-    summary: translatedSummary?.trim() ?? '',
-  };
+  if (!summary) return { title: translated.trim(), summary: '' };
+
+  const cut = translated.indexOf(JOINER);
+  if (cut !== -1) {
+    return {
+      title: translated.slice(0, cut).trim(),
+      summary: translated.slice(cut + JOINER.length).trim(),
+    };
+  }
+
+  // Fused: the response holds both fields with no way back. Ask again, one
+  // field at a time, rather than showing the summary text inside the headline.
+  const [retriedTitle, retriedSummary] = await Promise.all([
+    withSlot(() => requestTranslation(title, target, signal)),
+    withSlot(() => requestTranslation(summary, target, signal)),
+  ]);
+
+  // Nothing usable: leave it untranslated so the card can try again later.
+  if (!retriedTitle) return null;
+  return { title: retriedTitle.trim(), summary: retriedSummary?.trim() ?? '' };
 }
 
 export function cacheKey(articleId: string, target: TranslationLanguage): string {
