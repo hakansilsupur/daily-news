@@ -6,15 +6,16 @@ import { useTranslatedPreview } from '../hooks/useTranslatedPreview';
 import type { Strings } from '../i18n';
 import { formatRelativeTime } from '../services/newsService';
 import type { Theme } from '../theme';
-import type { Article, UiLanguage } from '../types';
+import type { Article, TranslationLanguage, UiLanguage } from '../types';
 
 interface Props {
   article: Article;
   theme: Theme;
   language: UiLanguage;
   strings: Strings;
-  /** Machine-translate the preview into `language` when it is in another one. */
+  /** Machine-translate the preview into `translateInto` when it is in another language. */
   translate: boolean;
+  translateInto: TranslationLanguage;
   saved: boolean;
   onPress: (article: Article) => void;
   onToggleSave: (article: Article) => void;
@@ -26,12 +27,13 @@ function ArticleCardBase({
   language,
   strings,
   translate,
+  translateInto,
   saved,
   onPress,
   onToggleSave,
 }: Props) {
   const timeLabel = formatRelativeTime(article.publishedAt, Date.now(), language);
-  const preview = useTranslatedPreview(article, language, translate);
+  const preview = useTranslatedPreview(article, translateInto, translate);
 
   return (
     <Pressable

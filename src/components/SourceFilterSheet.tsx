@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SegmentedControl } from './SegmentedControl';
-import { COUNTRIES } from '../data/countries';
+import { COUNTRIES, TRANSLATION_LANGUAGES } from '../data/countries';
 import { localeTag, originLabel, UI_LANGUAGE_PREFERENCES, type AddSourceError } from '../i18n';
 import type { NewsApp } from '../hooks/useNewsApp';
 import type { Theme } from '../theme';
@@ -194,6 +194,46 @@ export function SourceFilterSheet({ visible, onClose, onFindSources, theme, app 
                     thumbColor={Platform.OS === 'android' ? '#ffffff' : undefined}
                   />
                 </View>
+
+                {app.translatePreviews ? (
+                  <>
+                    <Text style={[styles.settingLabel, { color: theme.text }]}>
+                      {t.translationLanguage}
+                    </Text>
+
+                    <View style={styles.countryGrid}>
+                      {TRANSLATION_LANGUAGES.map((language) => {
+                        const selected = app.translationLanguage === language;
+                        return (
+                          <Pressable
+                            key={language}
+                            accessibilityRole="radio"
+                            accessibilityState={{ selected }}
+                            accessibilityLabel={t.languageName[language]}
+                            onPress={() => app.setTranslationLanguage(language)}
+                            style={[
+                              styles.countryChip,
+                              {
+                                borderColor: selected ? theme.accent : theme.border,
+                                backgroundColor: selected ? theme.accentSoft : theme.surface,
+                              },
+                            ]}
+                          >
+                            <Text
+                              numberOfLines={1}
+                              style={[
+                                styles.countryName,
+                                { color: selected ? theme.accent : theme.text },
+                              ]}
+                            >
+                              {t.languageName[language]}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </>
+                ) : null}
               </View>
 
               {grouped.map((group) => (

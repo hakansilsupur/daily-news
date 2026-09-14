@@ -1,11 +1,12 @@
-import type { SourceLanguage, UiLanguage } from '../types';
+import type { SourceLanguage, TranslationLanguage } from '../types';
 
 /**
  * Preview translation.
  *
- * Headlines and summaries are machine-translated into the interface language so
- * a feed in a language you do not read is still skimmable. Only the preview is
- * translated — opening an article goes to the publisher in the original.
+ * Headlines and summaries are machine-translated into the chosen translation
+ * language — Türkçe unless the user picks otherwise — so a feed in a language
+ * they do not read is still skimmable. Only the preview is translated: opening
+ * an article goes to the publisher in the original.
  *
  * This uses the public translate endpoint: no API key, no account and no
  * backend, which keeps the app's "nothing to sign up for" property. It is an
@@ -52,7 +53,7 @@ const FALLBACK_MAX_CHARS = 480;
 
 export function buildFallbackUrl(
   text: string,
-  target: UiLanguage,
+  target: TranslationLanguage,
   source: SourceLanguage,
 ): string {
   const params = new URLSearchParams({
@@ -83,7 +84,7 @@ export function parseFallbackResponse(body: string): string | null {
   }
 }
 
-export function buildTranslateUrl(text: string, target: UiLanguage, source = 'auto'): string {
+export function buildTranslateUrl(text: string, target: TranslationLanguage, source = 'auto'): string {
   const params = new URLSearchParams({
     client: 'gtx',
     sl: source,
@@ -97,7 +98,7 @@ export function buildTranslateUrl(text: string, target: UiLanguage, source = 'au
 /** Nothing to do when the text is already in the target language, or is empty. */
 export function needsTranslation(
   sourceLanguage: SourceLanguage | undefined,
-  target: UiLanguage,
+  target: TranslationLanguage,
   text: string,
 ): boolean {
   if (!text.trim()) return false;
@@ -124,7 +125,7 @@ async function withSlot<T>(run: () => Promise<T>): Promise<T> {
 
 async function requestTranslation(
   text: string,
-  target: UiLanguage,
+  target: TranslationLanguage,
   signal?: AbortSignal,
 ): Promise<string | null> {
   const controller = new AbortController();
@@ -149,7 +150,7 @@ async function requestTranslation(
 
 async function requestFallback(
   text: string,
-  target: UiLanguage,
+  target: TranslationLanguage,
   source: SourceLanguage,
   signal?: AbortSignal,
 ): Promise<string | null> {
@@ -189,7 +190,7 @@ export interface TranslatedPreview {
  */
 export async function translatePreview(
   preview: TranslatedPreview,
-  target: UiLanguage,
+  target: TranslationLanguage,
   sourceLanguage?: SourceLanguage,
   signal?: AbortSignal,
 ): Promise<TranslatedPreview | null> {
@@ -220,6 +221,6 @@ export async function translatePreview(
   };
 }
 
-export function cacheKey(articleId: string, target: UiLanguage): string {
+export function cacheKey(articleId: string, target: TranslationLanguage): string {
   return `${target}:${articleId}`;
 }

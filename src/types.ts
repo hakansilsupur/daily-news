@@ -35,6 +35,12 @@ export type SourceLanguage =
   | 'hi'
   | 'ja';
 
+/**
+ * What previews can be translated into. Independent of the interface language:
+ * someone reading an English UI may still want their headlines in Turkish.
+ */
+export type TranslationLanguage = SourceLanguage;
+
 /** Languages the interface itself is translated into. */
 export type UiLanguage = 'tr' | 'en';
 

@@ -7,7 +7,7 @@ import {
   translatePreview,
   type TranslatedPreview,
 } from '../services/translate';
-import type { Article, UiLanguage } from '../types';
+import type { Article, TranslationLanguage } from '../types';
 
 /**
  * One process-wide cache, hydrated from storage at startup. Keeping it at
@@ -56,7 +56,7 @@ export interface PreviewState {
  */
 export function useTranslatedPreview(
   article: Article,
-  target: UiLanguage,
+  target: TranslationLanguage,
   enabled: boolean,
 ): PreviewState {
   const key = cacheKey(article.id, target);

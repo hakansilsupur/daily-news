@@ -14,11 +14,14 @@ Built with Expo (SDK 57) + React Native + TypeScript.
   tick the sources it holds. Long-press a tab to edit or delete it. The choice
   of tab persists between launches.
 - **Translated previews** — with `Başlıkları çevir` on (the default), headlines
-  and summaries are machine-translated into the interface language, so an
-  English or German feed is skimmable in Turkish. Translated cards are labelled
-  `çeviri`; tapping through opens the publisher's article in its original
-  language. Translations are cached on the device, so each headline costs one
-  request ever, and only cards you actually scroll to are translated.
+  and summaries are machine-translated into the **translation language**, which
+  is its own setting: Türkçe by default, changeable to any of the twelve
+  supported languages under `Çeviri dili`. It is deliberately separate from the
+  interface language, so an English UI can still show Turkish headlines.
+  Translated cards are labelled `çeviri`; tapping through opens the publisher's
+  article in its original language. Translations are cached per article and
+  target language, so each headline costs one request ever, and only cards you
+  actually scroll to are translated.
 - **Two interface languages** — Türkçe and English, switched in the Sources sheet
   under `Dil / Language`. `System` follows the device locale. The choice is
   persisted and also drives relative timestamps (`2 saat önce` / `2h ago`).
@@ -175,6 +178,12 @@ scripts/check-feeds.mts     live feed health check
 ```
 
 ## Preview translation
+
+The target is `translationLanguage` — Türkçe unless the user changes it — not
+the interface language. The two are separate settings because they answer
+different questions: which language the app's own labels are in, and which
+language you want foreign headlines rendered into. A source already in the
+target language is never sent anywhere.
 
 `src/services/translate.ts` uses the public `translate.googleapis.com` endpoint:
 no API key, no account, no backend, matching the rest of the app. That endpoint

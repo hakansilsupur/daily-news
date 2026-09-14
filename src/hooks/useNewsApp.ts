@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { DEFAULT_COUNTRY, languageForOrigin } from '../data/countries';
+import {
+  DEFAULT_COUNTRY,
+  DEFAULT_TRANSLATION_LANGUAGE,
+  languageForOrigin,
+} from '../data/countries';
 import { BUILT_IN_SOURCES, filterSources, languagesIn } from '../data/sources';
 import { ALL_TAB_ID, pruneTab, sourcesForTab } from '../data/tabs';
 import {
@@ -23,6 +27,7 @@ import type {
   SourceCategory,
   SourceLanguage,
   SourceOrigin,
+  TranslationLanguage,
   UiLanguage,
   UiLanguagePreference,
 } from '../types';
@@ -73,9 +78,13 @@ export interface NewsApp {
   /** Translated strings for `uiLanguage`. */
   t: Strings;
 
-  /** Machine-translate headlines and summaries into the interface language. */
+  /** Machine-translate headlines and summaries into `translationLanguage`. */
   translatePreviews: boolean;
   setTranslatePreviews: (enabled: boolean) => void;
+
+  /** What previews are translated into — Türkçe by default, not tied to the UI. */
+  translationLanguage: TranslationLanguage;
+  setTranslationLanguage: (language: TranslationLanguage) => void;
 
   query: string;
   setQuery: (query: string) => void;
@@ -110,6 +119,9 @@ export function useNewsApp(): NewsApp {
   const [languageFilter, setLanguageFilterState] = useState<LanguageFilter>('all');
   const [country, setCountryState] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [translatePreviews, setTranslatePreviewsState] = useState(true);
+  const [translationLanguage, setTranslationLanguageState] = useState<TranslationLanguage>(
+    DEFAULT_TRANSLATION_LANGUAGE,
+  );
   const [feedTabs, setFeedTabs] = useState<FeedTab[]>([]);
   const [selectedTabId, setSelectedTabId] = useState<string>(ALL_TAB_ID);
   const [uiLanguagePreference, setUiLanguagePreferenceState] = useState<UiLanguagePreference>('system');
@@ -147,6 +159,7 @@ export function useNewsApp(): NewsApp {
         storedSelectedTab,
         storedCountry,
         storedTranslate,
+        storedTranslationLanguage,
       ] = await Promise.all([
         prefs.loadRegion(),
         prefs.loadEnabledSourceIds(),
@@ -158,6 +171,7 @@ export function useNewsApp(): NewsApp {
         prefs.loadSelectedTab(),
         prefs.loadCountry(),
         prefs.loadTranslatePreviews(),
+        prefs.loadTranslationLanguage(),
       ]);
 
       if (cancelled) return;
@@ -169,6 +183,7 @@ export function useNewsApp(): NewsApp {
       setLanguageFilterState(storedLanguageFilter);
       setCountryState(storedCountry);
       setTranslatePreviewsState(storedTranslate);
+      setTranslationLanguageState(storedTranslationLanguage);
       setFeedTabs(storedTabs);
       // A tab deleted on a previous run must not leave the feed pointing at nothing.
       setSelectedTabId(
@@ -268,6 +283,11 @@ export function useNewsApp(): NewsApp {
   const setTranslatePreviews = useCallback((enabled: boolean) => {
     setTranslatePreviewsState(enabled);
     void prefs.saveTranslatePreviews(enabled);
+  }, []);
+
+  const setTranslationLanguage = useCallback((next: TranslationLanguage) => {
+    setTranslationLanguageState(next);
+    void prefs.saveTranslationLanguage(next);
   }, []);
 
   const setCountry = useCallback((next: CountryCode) => {
@@ -456,6 +476,8 @@ export function useNewsApp(): NewsApp {
     t,
     translatePreviews,
     setTranslatePreviews,
+    translationLanguage,
+    setTranslationLanguage,
     query,
     setQuery,
     articles,

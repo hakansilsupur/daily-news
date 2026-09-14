@@ -1,4 +1,4 @@
-import type { CountryCode, SourceLanguage } from '../types';
+import type { CountryCode, SourceLanguage, TranslationLanguage } from '../types';
 
 /**
  * The countries a user can call home, in the order they appear in the picker.
@@ -24,6 +24,32 @@ export const COUNTRIES: { code: CountryCode; flag: string; language: SourceLangu
 ];
 
 export const DEFAULT_COUNTRY: CountryCode = 'tr';
+
+/**
+ * Languages a preview can be translated into, and the default target. Türkçe
+ * leads and is the default; the rest follow in the order they read in the
+ * picker. Independent of the interface language, which only has two options.
+ */
+export const TRANSLATION_LANGUAGES: TranslationLanguage[] = [
+  'tr',
+  'en',
+  'az',
+  'de',
+  'fr',
+  'es',
+  'it',
+  'nl',
+  'he',
+  'zh',
+  'hi',
+  'ja',
+];
+
+export const DEFAULT_TRANSLATION_LANGUAGE: TranslationLanguage = 'tr';
+
+export function isTranslationLanguage(value: unknown): value is TranslationLanguage {
+  return typeof value === 'string' && (TRANSLATION_LANGUAGES as string[]).includes(value);
+}
 
 export const COUNTRY_CODES = COUNTRIES.map((country) => country.code);
 

@@ -93,6 +93,7 @@ export interface Strings {
 
   translatePreviews: string;
   translatePreviewsHint: string;
+  translationLanguage: string;
   translatedBadge: string;
 
   languageGroup: string;
@@ -199,7 +200,8 @@ const en: Strings = {
 
   translatePreviews: 'Translate headlines',
   translatePreviewsHint:
-    'Machine-translates headlines and summaries into the app language. Articles open in the original.',
+    'Machine-translates headlines and summaries. Articles open in the original.',
+  translationLanguage: 'Translate into',
   translatedBadge: 'translated',
 
   languageGroup: 'LANGUAGE',
@@ -342,7 +344,8 @@ const tr: Strings = {
 
   translatePreviews: 'Başlıkları çevir',
   translatePreviewsHint:
-    'Başlıkları ve özetleri uygulama diline makineyle çevirir. Haberler özgün dilinde açılır.',
+    'Başlıkları ve özetleri makineyle çevirir. Haberler özgün dilinde açılır.',
+  translationLanguage: 'Çeviri dili',
   translatedBadge: 'çeviri',
 
   languageGroup: 'DİL',

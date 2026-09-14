@@ -2,7 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { isAlreadyAdded, searchCatalog, type CatalogEntry } from '../src/data/catalog';
-import { COUNTRIES, DEFAULT_COUNTRY, languageForOrigin } from '../src/data/countries';
+import {
+  COUNTRIES,
+  DEFAULT_COUNTRY,
+  DEFAULT_TRANSLATION_LANGUAGE,
+  isTranslationLanguage,
+  languageForOrigin,
+  TRANSLATION_LANGUAGES,
+} from '../src/data/countries';
 import { filterSources, languagesIn } from '../src/data/sources';
 import { pruneTab, sourcesForTab } from '../src/data/tabs';
 import {
@@ -458,6 +465,33 @@ test('the fallback engine is read carefully, quota notices included', () => {
 test('translation cache keys are per language', () => {
   assert.equal(cacheKey('bbc:1', 'tr'), 'tr:bbc:1');
   assert.notEqual(cacheKey('bbc:1', 'tr'), cacheKey('bbc:1', 'en'));
+  assert.notEqual(cacheKey('bbc:1', 'tr'), cacheKey('bbc:1', 'de'), 'a new target re-translates');
+});
+
+test('the translation target is Türkçe by default and freely changeable', () => {
+  assert.equal(DEFAULT_TRANSLATION_LANGUAGE, 'tr');
+  assert.equal(TRANSLATION_LANGUAGES[0], 'tr', 'and leads the picker');
+
+  for (const language of TRANSLATION_LANGUAGES) {
+    assert.ok(STRINGS.tr.languageName[language], `${language} is unnamed in Turkish`);
+    assert.ok(STRINGS.en.languageName[language], `${language} is unnamed in English`);
+    assert.equal(isTranslationLanguage(language), true);
+  }
+
+  assert.equal(isTranslationLanguage('klingon'), false);
+  assert.equal(isTranslationLanguage(undefined), false);
+});
+
+test('the target language decides what is translated, not the interface', () => {
+  // Reading an English UI with Turkish previews: English text still translates.
+  assert.equal(needsTranslation('en', 'tr', 'Hello'), true);
+  // And a Turkish source is left alone even though the UI may be English.
+  assert.equal(needsTranslation('tr', 'tr', 'Merhaba'), false);
+  // Targeting German leaves German sources alone and translates Turkish ones.
+  assert.equal(needsTranslation('de', 'de', 'Guten Tag'), false);
+  assert.equal(needsTranslation('tr', 'de', 'Merhaba'), true);
+
+  assert.equal(new URL(buildTranslateUrl('Merhaba', 'ja')).searchParams.get('tl'), 'ja');
 });
 
 test('stripHtml removes scripts and decodes entities', () => {

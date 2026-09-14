@@ -1,6 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { DEFAULT_COUNTRY, isCountryCode } from '../data/countries';
+import {
+  DEFAULT_COUNTRY,
+  DEFAULT_TRANSLATION_LANGUAGE,
+  isCountryCode,
+  isTranslationLanguage,
+} from '../data/countries';
 import { ALL_TAB_ID } from '../data/tabs';
 import type {
   Article,
@@ -9,6 +14,7 @@ import type {
   LanguageFilter,
   NewsSource,
   RegionFilter,
+  TranslationLanguage,
   UiLanguagePreference,
 } from '../types';
 
@@ -23,6 +29,7 @@ const KEYS = {
   selectedTab: 'prefs:selectedTab',
   country: 'prefs:country',
   translatePreviews: 'prefs:translatePreviews',
+  translationLanguage: 'prefs:translationLanguage',
   translations: 'prefs:translations',
 } as const;
 
@@ -90,6 +97,15 @@ export const saveUiLanguage = (preference: UiLanguagePreference) =>
 
 export const loadLanguageFilter = () => readJson<LanguageFilter>(KEYS.languageFilter, 'all');
 export const saveLanguageFilter = (filter: LanguageFilter) => writeJson(KEYS.languageFilter, filter);
+
+/** Türkçe is the default target; any supported language can replace it. */
+export async function loadTranslationLanguage(): Promise<TranslationLanguage> {
+  const stored = await readJson<string>(KEYS.translationLanguage, DEFAULT_TRANSLATION_LANGUAGE);
+  return isTranslationLanguage(stored) ? stored : DEFAULT_TRANSLATION_LANGUAGE;
+}
+
+export const saveTranslationLanguage = (language: TranslationLanguage) =>
+  writeJson(KEYS.translationLanguage, language);
 
 export const loadTranslatePreviews = () => readJson<boolean>(KEYS.translatePreviews, true);
 export const saveTranslatePreviews = (enabled: boolean) =>

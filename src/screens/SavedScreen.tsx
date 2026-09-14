@@ -24,12 +24,13 @@ export function SavedScreen({ app, theme }: Props) {
         language={app.uiLanguage}
         strings={t}
         translate={app.translatePreviews}
+        translateInto={app.translationLanguage}
         saved
         onPress={openArticle}
         onToggleSave={app.toggleSaved}
       />
     ),
-    [theme, app.uiLanguage, t, app.translatePreviews, app.toggleSaved],
+    [theme, app.uiLanguage, t, app.translatePreviews, app.translationLanguage, app.toggleSaved],
   );
 
   return (
