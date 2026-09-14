@@ -1,5 +1,18 @@
 /** Countries the app can treat as "home". Türkiye is the default. */
-export type CountryCode = 'tr' | 'us' | 'gb' | 'de' | 'fr' | 'es' | 'it' | 'nl' | 'az';
+export type CountryCode =
+  | 'tr'
+  | 'us'
+  | 'gb'
+  | 'de'
+  | 'fr'
+  | 'es'
+  | 'it'
+  | 'nl'
+  | 'az'
+  | 'il'
+  | 'cn'
+  | 'in'
+  | 'jp';
 
 /**
  * Where a source belongs: a specific country, or the international bucket for
@@ -8,7 +21,19 @@ export type CountryCode = 'tr' | 'us' | 'gb' | 'de' | 'fr' | 'es' | 'it' | 'nl' 
 export type SourceOrigin = CountryCode | 'world';
 
 /** Language a source publishes in. */
-export type SourceLanguage = 'tr' | 'en' | 'de' | 'fr' | 'es' | 'it' | 'nl' | 'az';
+export type SourceLanguage =
+  | 'tr'
+  | 'en'
+  | 'de'
+  | 'fr'
+  | 'es'
+  | 'it'
+  | 'nl'
+  | 'az'
+  | 'he'
+  | 'zh'
+  | 'hi'
+  | 'ja';
 
 /** Languages the interface itself is translated into. */
 export type UiLanguage = 'tr' | 'en';

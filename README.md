@@ -23,9 +23,9 @@ Built with Expo (SDK 57) + React Native + TypeScript.
   under `Dil / Language`. `System` follows the device locale. The choice is
   persisted and also drives relative timestamps (`2 saat önce` / `2h ago`).
 - **Selectable home country** — Türkiye by default, changeable in the Sources
-  sheet to Azerbaijan, France, Germany, Italy, Netherlands, Spain, the UK or the
-  US. The directory carries local sources for each, and the feed's middle filter
-  becomes whichever country you chose.
+  sheet to Azerbaijan, China, France, Germany, India, Israel, Italy, Japan, the
+  Netherlands, Spain, the UK or the US. The directory carries local sources for
+  each, and the feed's middle filter becomes whichever country you chose.
 - **Region filter** — `All` / your country / `Worldwide`, persisted between
   launches. It stores `local` rather than a country name, so switching country
   re-points the filter instead of resetting it.
@@ -35,8 +35,9 @@ Built with Expo (SDK 57) + React Native + TypeScript.
 - **Source filter** — every source has a toggle. Flip them from the chip row on
   the feed, or from the Sources sheet with `Select all` / `Clear` shortcuts.
 - **Find sources by search** — the Sources sheet opens a searchable directory of
-  ~45 well-known Turkish and worldwide feeds. Type `bilim`, `spor` or `BBC` and
-  add what you want with one tap; anything already in your list shows as added.
+  ~90 well-known feeds across 13 countries plus the worldwide bucket. Type
+  `bilim`, `spor`, `çin` or `BBC` and add what you want with one tap; anything
+  already in your list shows as added.
 - **Auto-discovery from a site address** — paste `nature.com` (or any site) and
   the app finds that site's feeds: it reads the page's own
   `<link rel="alternate">` tags, falls back to probing the usual paths

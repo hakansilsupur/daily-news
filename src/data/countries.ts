@@ -8,9 +8,15 @@ import type { CountryCode, SourceLanguage } from '../types';
 export const COUNTRIES: { code: CountryCode; flag: string; language: SourceLanguage }[] = [
   { code: 'tr', flag: '🇹🇷', language: 'tr' },
   { code: 'az', flag: '🇦🇿', language: 'az' },
+  { code: 'cn', flag: '🇨🇳', language: 'zh' },
   { code: 'fr', flag: '🇫🇷', language: 'fr' },
   { code: 'de', flag: '🇩🇪', language: 'de' },
+  // India's national press publishes mainly in English, so that is the useful
+  // default for a feed added there by hand; Hindi sources are tagged as such.
+  { code: 'in', flag: '🇮🇳', language: 'en' },
+  { code: 'il', flag: '🇮🇱', language: 'he' },
   { code: 'it', flag: '🇮🇹', language: 'it' },
+  { code: 'jp', flag: '🇯🇵', language: 'ja' },
   { code: 'nl', flag: '🇳🇱', language: 'nl' },
   { code: 'es', flag: '🇪🇸', language: 'es' },
   { code: 'gb', flag: '🇬🇧', language: 'en' },
