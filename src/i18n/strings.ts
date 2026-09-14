@@ -94,6 +94,7 @@ export interface Strings {
   translatePreviews: string;
   translatePreviewsHint: string;
   translationLanguage: string;
+  originalLanguage: string;
   translatedBadge: string;
 
   languageGroup: string;
@@ -202,6 +203,7 @@ const en: Strings = {
   translatePreviewsHint:
     'Machine-translates headlines and summaries. Articles open in the original.',
   translationLanguage: 'Translate into',
+  originalLanguage: 'Original',
   translatedBadge: 'translated',
 
   languageGroup: 'LANGUAGE',
@@ -346,6 +348,7 @@ const tr: Strings = {
   translatePreviewsHint:
     'Başlıkları ve özetleri makineyle çevirir. Haberler özgün dilinde açılır.',
   translationLanguage: 'Çeviri dili',
+  originalLanguage: 'Özgün',
   translatedBadge: 'çeviri',
 
   languageGroup: 'DİL',

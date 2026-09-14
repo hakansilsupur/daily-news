@@ -174,19 +174,21 @@ async function requestFallback(
   }
 }
 
-/** Separator used to translate a card's title and summary in a single request. */
-const JOINER = '\n';
-
 export interface TranslatedPreview {
   title: string;
   summary: string;
 }
 
 /**
- * Translates one card. Title and summary go in a single request — two fields
- * per article would double the traffic for no benefit — and the result is split
- * back on the newline the engine preserves. If the split does not come back
- * cleanly, the title alone is kept, since a mangled summary is worse than none.
+ * Translates one card.
+ *
+ * Title and summary are sent as separate requests rather than joined by a
+ * separator: the engine does not reliably preserve one, and a fused response
+ * cannot be split back apart, which showed up as cards whose headline was
+ * translated while the summary below it stayed in the original language — or
+ * worse, whose headline silently contained the summary too.
+ *
+ * Both are cached together, so the extra request is paid once per article.
  */
 export async function translatePreview(
   preview: TranslatedPreview,
@@ -198,26 +200,21 @@ export async function translatePreview(
   const summary = preview.summary.trim();
   if (!title && !summary) return null;
 
-  const joined = summary ? `${title}${JOINER}${summary}` : title;
-  const translated = await withSlot(() => requestTranslation(joined, target, signal));
+  const [translatedTitle, translatedSummary] = await Promise.all([
+    title ? withSlot(() => requestTranslation(title, target, signal)) : Promise.resolve(''),
+    summary ? withSlot(() => requestTranslation(summary, target, signal)) : Promise.resolve(''),
+  ]);
 
-  if (!translated) {
+  if (translatedTitle === null && translatedSummary === null) {
     // Primary engine unavailable: fall back to a headline-only translation.
     if (!title || !sourceLanguage || sourceLanguage === target) return null;
-    const fallback = await withSlot(() =>
-      requestFallback(title, target, sourceLanguage, signal),
-    );
+    const fallback = await withSlot(() => requestFallback(title, target, sourceLanguage, signal));
     return fallback ? { title: fallback.trim(), summary: '' } : null;
   }
 
-  if (!summary) return { title: translated.trim(), summary: '' };
-
-  const cut = translated.indexOf(JOINER);
-  if (cut === -1) return { title: translated.trim(), summary: '' };
-
   return {
-    title: translated.slice(0, cut).trim(),
-    summary: translated.slice(cut + JOINER.length).trim(),
+    title: translatedTitle?.trim() ?? '',
+    summary: translatedSummary?.trim() ?? '',
   };
 }
 

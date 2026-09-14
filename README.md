@@ -13,11 +13,12 @@ Built with Expo (SDK 57) + React Native + TypeScript.
   on X. `All` is always first; `Add +` opens a sheet where you name a tab and
   tick the sources it holds. Long-press a tab to edit or delete it. The choice
   of tab persists between launches.
-- **Translated previews** — with `Başlıkları çevir` on (the default), headlines
-  and summaries are machine-translated into the **translation language**, which
-  is its own setting: Türkçe by default, changeable to any of the twelve
-  supported languages under `Çeviri dili`. It is deliberately separate from the
-  interface language, so an English UI can still show Turkish headlines.
+- **Translated previews** — a chip row on the feed picks the language you read
+  in: `Özgün` leaves every headline as its publisher wrote it, any other chip
+  machine-translates headlines and summaries into that language. Türkçe is the
+  default. It is deliberately separate from the interface language, so an
+  English UI can still show Turkish headlines, and the same setting is mirrored
+  in the Sources sheet under `Çeviri dili`.
   Translated cards are labelled `çeviri`; tapping through opens the publisher's
   article in its original language. Translations are cached per article and
   target language, so each headline costs one request ever, and only cards you
@@ -33,8 +34,9 @@ Built with Expo (SDK 57) + React Native + TypeScript.
   launches. It stores `local` rather than a country name, so switching country
   re-points the filter instead of resetting it.
 - **Feed language filter** — `All` plus whichever languages your sources
-  actually publish in, applied on top of the region filter. It is independent of
-  the interface language, so you can read an English UI over Turkish feeds.
+  actually publish in, applied on top of the region filter. It lives in the
+  Sources sheet rather than on the feed, because hiding sources is rarely what
+  you want once previews can be translated instead.
 - **Source filter** — every source has a toggle. Flip them from the chip row on
   the feed, or from the Sources sheet with `Select all` / `Clear` shortcuts.
 - **Find sources by search** — the Sources sheet opens a searchable directory of

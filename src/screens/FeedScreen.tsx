@@ -16,12 +16,13 @@ import { EmptyState } from '../components/EmptyState';
 import { FeedTabStrip } from '../components/FeedTabStrip';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { SourceChips } from '../components/SourceChips';
+import { TranslationChips } from '../components/TranslationChips';
 import type { NewsApp } from '../hooks/useNewsApp';
 import { regionFilterLabel } from '../i18n';
 import { formatRelativeTime } from '../services/newsService';
 import { openArticle } from '../services/openArticle';
 import type { Theme } from '../theme';
-import type { Article, FeedTab, LanguageFilter, RegionFilter } from '../types';
+import type { Article, FeedTab, RegionFilter } from '../types';
 
 interface Props {
   app: NewsApp;
@@ -38,16 +39,6 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
   const regionOptions: { value: RegionFilter; label: string }[] = (
     ['all', 'local', 'world'] as RegionFilter[]
   ).map((value) => ({ value, label: regionFilterLabel(t, value, app.country) }));
-
-  // Only the languages the user's own sources publish in — picking Germany as
-  // your country should not leave you with a Türkçe/English choice.
-  const languageOptions: { value: LanguageFilter; label: string }[] = [
-    { value: 'all', label: t.allLanguages },
-    ...app.availableLanguages.map((language) => ({
-      value: language as LanguageFilter,
-      label: t.languageName[language],
-    })),
-  ];
 
   const renderItem = useCallback(
     ({ item }: { item: Article }) => (
@@ -120,6 +111,19 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
         onAdd={onAddTab}
       />
 
+      {/* Reading language is a presentation choice, not a filter, so it applies
+          on a pinned tab too — unlike the region and source controls below. */}
+      <TranslationChips
+        theme={theme}
+        strings={t}
+        enabled={app.translatePreviews}
+        language={app.translationLanguage}
+        onChange={({ enabled, language }) => {
+          app.setTranslatePreviews(enabled);
+          if (enabled) app.setTranslationLanguage(language);
+        }}
+      />
+
       {/* A pinned tab is its own fixed selection, so the ad-hoc filters below
           would only contradict it — they belong to the "All" tab alone. */}
       {selectedTab ? null : (
@@ -129,14 +133,6 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
             options={regionOptions}
             value={app.region}
             onChange={app.setRegion}
-          />
-
-          <SegmentedControl
-            theme={theme}
-            options={languageOptions}
-            value={app.languageFilter}
-            onChange={app.setLanguageFilter}
-            compact
           />
 
           <SourceChips
