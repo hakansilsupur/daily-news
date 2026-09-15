@@ -73,6 +73,13 @@ export interface Strings {
   addedLabel: string;
   manualEntryGroup: string;
 
+  trendingTab: string;
+  trendingTitle: string;
+  trendingSubtitle: (sources: number) => string;
+  topicCoverage: (articles: number, sources: number) => string;
+  noTrendsTitle: string;
+  noTrendsMessage: string;
+
   allTab: string;
   addTab: string;
   newTabTitle: string;
@@ -178,6 +185,15 @@ const en: Strings = {
   addLabel: 'Add',
   addedLabel: 'Added',
   manualEntryGroup: 'OR ENTER A FEED URL',
+
+  trendingTab: 'Trending',
+  trendingTitle: 'Trending',
+  trendingSubtitle: (sources) => `What ${sources} sources are covering most`,
+  topicCoverage: (articles, sources) =>
+    `${articles} ${articles === 1 ? 'story' : 'stories'} · ${sources} sources`,
+  noTrendsTitle: 'No clear trend yet',
+  noTrendsMessage:
+    'A story needs at least two sources covering it to show up here. Turn on more sources, or pull down to refresh.',
 
   allTab: 'All',
   addTab: 'Add',
@@ -324,6 +340,14 @@ const tr: Strings = {
   addLabel: 'Ekle',
   addedLabel: 'Eklendi',
   manualEntryGroup: 'YA DA AKIŞ ADRESİ GİRİN',
+
+  trendingTab: 'Gündem',
+  trendingTitle: 'Gündem',
+  trendingSubtitle: (sources) => `${sources} kaynağın en çok işlediği konular`,
+  topicCoverage: (articles, sources) => `${articles} haber · ${sources} kaynak`,
+  noTrendsTitle: 'Henüz belirgin bir gündem yok',
+  noTrendsMessage:
+    'Bir konunun burada görünmesi için en az iki kaynağın onu işlemesi gerekir. Daha fazla kaynak açın ya da yenilemek için aşağı çekin.',
 
   allTab: 'Tümü',
   addTab: 'Ekle',

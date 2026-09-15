@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { ALL_TAB_ID } from '../data/tabs';
+import { ALL_TAB_ID, TRENDING_TAB_ID } from '../data/tabs';
 import type { Strings } from '../i18n';
 import type { Theme } from '../theme';
 import type { FeedTab } from '../types';
@@ -30,6 +30,13 @@ export function FeedTabStrip({ theme, strings, tabs, selectedId, onSelect, onEdi
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
+        <TabItem
+          theme={theme}
+          label={strings.trendingTab}
+          selected={selectedId === TRENDING_TAB_ID}
+          onPress={() => onSelect(TRENDING_TAB_ID)}
+        />
+
         <TabItem
           theme={theme}
           label={strings.allTab}

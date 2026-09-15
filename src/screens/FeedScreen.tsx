@@ -17,6 +17,9 @@ import { FeedTabStrip } from '../components/FeedTabStrip';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { SourceChips } from '../components/SourceChips';
 import { TranslationChips } from '../components/TranslationChips';
+import { TrendingTopicCard } from '../components/TrendingTopicCard';
+import { TRENDING_TAB_ID } from '../data/tabs';
+import type { TrendingTopic } from '../services/trending';
 import type { NewsApp } from '../hooks/useNewsApp';
 import { useTranslationThrottled } from '../hooks/useTranslatedPreview';
 import { regionFilterLabel } from '../i18n';
@@ -42,6 +45,24 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
     ['all', 'local', 'world'] as RegionFilter[]
   ).map((value) => ({ value, label: regionFilterLabel(t, value, app.country) }));
 
+  const trending = app.selectedTabId === TRENDING_TAB_ID;
+
+  const renderTopic = useCallback(
+    ({ item, index }: { item: TrendingTopic; index: number }) => (
+      <TrendingTopicCard
+        topic={item}
+        rank={index + 1}
+        theme={theme}
+        language={app.uiLanguage}
+        strings={t}
+        translate={app.translatePreviews}
+        translateInto={app.translationLanguage}
+        onPress={openArticle}
+      />
+    ),
+    [theme, app.uiLanguage, t, app.translatePreviews, app.translationLanguage],
+  );
+
   const renderItem = useCallback(
     ({ item }: { item: Article }) => (
       <ArticleCard
@@ -64,12 +85,14 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
       <View style={styles.titleRow}>
         <View>
           <Text style={[styles.title, { color: theme.text }]}>
-            {selectedTab ? selectedTab.name : t.feedTitle}
+            {trending ? t.trendingTitle : selectedTab ? selectedTab.name : t.feedTitle}
           </Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            {selectedTab
-              ? t.tabSelectedCount(app.activeSources.length)
-              : t.sourceCount(app.activeSources.length, app.regionSources.length)}
+            {trending
+              ? t.trendingSubtitle(app.activeSources.length)
+              : selectedTab
+                ? t.tabSelectedCount(app.activeSources.length)
+                : t.sourceCount(app.activeSources.length, app.regionSources.length)}
             {app.lastUpdated
               ? t.updatedSuffix(formatRelativeTime(app.lastUpdated, Date.now(), app.uiLanguage))
               : ''}
@@ -201,6 +224,18 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
       );
     }
 
+    // Articles arrived, but no story is carried by enough sources to count.
+    if (trending) {
+      return (
+        <EmptyState
+          theme={theme}
+          icon="trending-up-outline"
+          title={t.noTrendsTitle}
+          message={t.noTrendsMessage}
+        />
+      );
+    }
+
     return (
       <EmptyState
         theme={theme}
@@ -210,6 +245,29 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
       />
     );
   };
+
+  if (trending) {
+    return (
+      <FlatList
+        data={app.trendingTopics}
+        keyExtractor={(item) => item.key}
+        renderItem={renderTopic}
+        ListHeaderComponent={header}
+        ListEmptyComponent={listEmpty}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        initialNumToRender={4}
+        refreshControl={
+          <RefreshControl
+            refreshing={app.refreshing}
+            onRefresh={app.refresh}
+            tintColor={theme.accent}
+            colors={[theme.accent]}
+          />
+        }
+      />
+    );
+  }
 
   return (
     <FlatList

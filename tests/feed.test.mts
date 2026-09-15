@@ -26,6 +26,7 @@ import {
   searchArticles,
 } from '../src/services/newsService';
 import { parseFeed, parseFeedTitle, stripHtml } from '../src/services/rss';
+import { findTrendingTopics } from '../src/services/trending';
 import {
   buildFallbackUrl,
   buildTranslateUrl,
@@ -40,7 +41,7 @@ import {
   resetThrottle,
   throttleRetryDelay,
 } from '../src/services/translate';
-import type { NewsSource, SourceOrigin } from '../src/types';
+import type { Article, NewsSource, SourceOrigin } from '../src/types';
 
 const source = (id: string, region: SourceOrigin): NewsSource => ({
   id,
@@ -526,6 +527,119 @@ test('the target language decides what is translated, not the interface', () => 
   assert.equal(needsTranslation('tr', 'de', 'Merhaba'), true);
 
   assert.equal(new URL(buildTranslateUrl('Merhaba', 'ja')).searchParams.get('tl'), 'ja');
+});
+
+const article = (id: string, sourceId: string, title: string, publishedAt = Date.now()): Article => ({
+  id,
+  title,
+  summary: '',
+  link: `https://example.test/${id}`,
+  publishedAt,
+  sourceId,
+  sourceName: sourceId,
+  region: 'tr',
+  language: 'tr',
+});
+
+test('trending ranks stories by how many sources carry them', () => {
+  const now = Date.parse('2026-09-15T12:00:00Z');
+  const topics = findTrendingTopics(
+    [
+      article('1', 'trt', 'Deprem bölgesinde yardım çalışmaları sürüyor', now),
+      article('2', 'ntv', 'Deprem sonrası kalıcı konut açıklaması', now),
+      article('3', 'aa', 'Deprem için toplanan bağış miktarı açıklandı', now),
+      article('4', 'hurriyet', 'Enflasyon verileri bugün açıklanıyor', now),
+      article('5', 'sozcu', 'Enflasyon beklentisi yükseldi', now),
+      article('6', 'trt', 'Galatasaray transfer görüşmelerine başladı', now),
+    ],
+    { now },
+  );
+
+  assert.equal(topics.length, 2, 'only stories with two or more sources count');
+  assert.equal(topics[0].key, 'deprem', 'three sources outrank two');
+  assert.equal(topics[0].sourceCount, 3);
+  assert.equal(topics[0].articles.length, 3);
+  assert.equal(topics[1].key, 'enflasyon');
+
+  const keys = topics.map((topic) => topic.key);
+  assert.ok(!keys.includes('galatasaray'), 'a single source is not a trend');
+});
+
+test('trending ignores filler words, source names and stale articles', () => {
+  const now = Date.parse('2026-09-15T12:00:00Z');
+  const old = now - 3 * 24 * 60 * 60 * 1000;
+
+  const topics = findTrendingTopics(
+    [
+      article('1', 'a', 'Habertürk bugün için önemli açıklama yaptı', now),
+      article('2', 'b', 'Habertürk bugün için yeni açıklama yaptı', now),
+      article('3', 'a', 'Seçim sonuçları açıklandı', old),
+      article('4', 'b', 'Seçim yorumları sürüyor', old),
+    ],
+    { now, excludeTerms: ['Habertürk'] },
+  );
+
+  const keys = topics.map((topic) => topic.key);
+  assert.ok(!keys.includes('habertürk'), 'the source name is not the story');
+  assert.ok(!keys.includes('bugün'), 'filler words are not stories');
+  assert.ok(!keys.includes('seçim'), 'three-day-old coverage is not trending');
+});
+
+test('trending folds Turkish casing and shows one topic per story', () => {
+  const now = Date.parse('2026-09-15T12:00:00Z');
+  const topics = findTrendingTopics(
+    [
+      article('1', 'a', 'İSTANBUL trafiğine yeni düzenleme', now),
+      article('2', 'b', 'İstanbul için ulaşım kararı', now),
+      article('3', 'c', 'istanbul metrosunda çalışma', now),
+    ],
+    { now },
+  );
+
+  assert.equal(topics.length, 1, 'one story, one topic — not three casings');
+  assert.equal(topics[0].sourceCount, 3);
+  // Turkish folding: İ lowercases to a plain i, not the dotted i̇ other locales give.
+  assert.equal(topics[0].key, 'istanbul');
+});
+
+test('a topic is named by the phrase its coverage shares', () => {
+  const now = Date.parse('2026-09-15T12:00:00Z');
+
+  const [banking] = findTrendingTopics(
+    [
+      article('1', 'a', 'Merkez Bankası faiz kararını açıkladı', now),
+      article('2', 'b', 'Merkez Bankası faizi değiştirmedi', now),
+      article('3', 'c', 'Piyasalar Merkez Bankası kararına odaklandı', now),
+    ],
+    { now },
+  );
+
+  assert.equal(banking.label, 'Merkez Bankası', 'not the bare suffix-carrying token');
+
+  const [city] = findTrendingTopics(
+    [
+      article('1', 'a', 'İstanbul’da sağanak uyarısı', now),
+      article('2', 'b', 'Meteoroloji İstanbul için uyardı', now),
+    ],
+    { now },
+  );
+
+  assert.equal(city.label, 'İstanbul', 'a single word stays a single word');
+});
+
+test('trending keeps a story together instead of repeating it per keyword', () => {
+  const now = Date.parse('2026-09-15T12:00:00Z');
+  const topics = findTrendingTopics(
+    [
+      article('1', 'a', 'Merkez Bankası faiz kararını açıkladı', now),
+      article('2', 'b', 'Merkez Bankası faiz oranını sabit tuttu', now),
+      article('3', 'c', 'Merkez Bankası faiz beklentisi', now),
+    ],
+    { now },
+  );
+
+  assert.equal(topics.length, 1, 'shared articles mean one story, not three');
+  assert.equal(topics[0].articles.length, 3);
 });
 
 test('stripHtml removes scripts and decodes entities', () => {

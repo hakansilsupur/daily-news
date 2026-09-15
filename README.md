@@ -9,6 +9,10 @@ Built with Expo (SDK 57) + React Native + TypeScript.
 
 ## Features
 
+- **Gündem (trending)** — the leftmost tab groups the feed into the stories
+  several newsrooms are running at once, ranked by how many sources carry each
+  one, with the lead article and the other coverage beneath it. It follows the
+  region filter, so it shows what is big in your country or worldwide.
 - **Pinned tabs** — a row of tabs across the top of the feed, like pinned lists
   on X. `All` is always first; `Add +` opens a sheet where you name a tab and
   tick the sources it holds. Long-press a tab to edit or delete it. The choice
@@ -169,6 +173,7 @@ src/
     rss.ts                  fetch + parse RSS 2.0 / RSS 1.0 (RDF) / Atom
     discovery.ts            finds a site's feeds from its address
     translate.ts            keyless preview translation, with a fallback engine
+    trending.ts             groups the feed into stories by shared coverage
     newsService.ts          parallel fetch, dedupe, sort, search, timestamps
     openArticle.ts          in-app browser with system-browser fallback
   storage/prefs.ts          AsyncStorage persistence (filters, language, tabs, feeds, saves)
@@ -247,6 +252,31 @@ missing key is a compile error rather than a blank label, and a unit test
 asserts both tables have the same shape. `detectSystemLanguage()` reads the
 device locale from `Intl` — no native module, so no rebuild is needed to change
 languages at runtime.
+
+## What "trending" means here
+
+There is no view counter to read: publishers do not put "most read" in their
+RSS, and this app has no backend to collect one. Claiming a popularity ranking
+would mean inventing it.
+
+What the feed genuinely knows is how many independent newsrooms are running the
+same story right now — the signal an editor actually watches. So
+`src/services/trending.ts` groups headlines by shared terms and ranks by
+**distinct sources**, and the UI says `3 kaynak` rather than a view count.
+
+- A story needs at least two sources; one source is that outlet's story, not a
+  trend.
+- Terms are folded Turkish-aware (`İSTANBUL` and `istanbul` are one), filler
+  words are dropped, and source names are excluded so "Habertürk" in a headline
+  is not mistaken for a topic.
+- Topics are taken greedily: once a story's articles belong to a topic, a
+  second term covering the same articles is treated as a synonym rather than a
+  separate entry, so a story appears once.
+- Turkish glues suffixes onto words, so a topic ranking on `Bankası` is named by
+  the phrase its coverage shares — `Merkez Bankası`.
+- Only articles from the last 24 hours count.
+
+It costs no extra network: everything is computed from articles already fetched.
 
 ## Tabs vs. filters
 

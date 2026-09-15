@@ -6,7 +6,7 @@ import {
   languageForOrigin,
 } from '../data/countries';
 import { BUILT_IN_SOURCES, filterSources, languagesIn } from '../data/sources';
-import { ALL_TAB_ID, pruneTab, sourcesForTab } from '../data/tabs';
+import { ALL_TAB_ID, isBuiltInTab, pruneTab, sourcesForTab, TRENDING_TAB_ID } from '../data/tabs';
 import {
   resolveLanguage,
   stringsFor,
@@ -16,6 +16,7 @@ import {
 } from '../i18n';
 import { hydrateTranslationCache } from './useTranslatedPreview';
 import { fetchAllFeeds, mergeAndSort, searchArticles } from '../services/newsService';
+import { findTrendingTopics, type TrendingTopic } from '../services/trending';
 import * as prefs from '../storage/prefs';
 import type {
   Article,
@@ -91,6 +92,8 @@ export interface NewsApp {
 
   articles: Article[];
   savedArticles: Article[];
+  /** Stories several sources are carrying at once; only built on the trending tab. */
+  trendingTopics: TrendingTopic[];
 
   isSourceEnabled: (id: string) => boolean;
   toggleSource: (id: string) => void;
@@ -187,7 +190,7 @@ export function useNewsApp(): NewsApp {
       setFeedTabs(storedTabs);
       // A tab deleted on a previous run must not leave the feed pointing at nothing.
       setSelectedTabId(
-        storedSelectedTab === ALL_TAB_ID || storedTabs.some((tab) => tab.id === storedSelectedTab)
+        isBuiltInTab(storedSelectedTab) || storedTabs.some((tab) => tab.id === storedSelectedTab)
           ? storedSelectedTab
           : ALL_TAB_ID,
       );
@@ -447,6 +450,14 @@ export function useNewsApp(): NewsApp {
 
   const articles = useMemo(() => searchArticles(rawArticles, query), [rawArticles, query]);
 
+  const trendingTopics = useMemo(
+    () =>
+      selectedTabId === TRENDING_TAB_ID
+        ? findTrendingTopics(articles, { excludeTerms: allSources.map((source) => source.name) })
+        : [],
+    [selectedTabId, articles, allSources],
+  );
+
   return {
     ready,
     loading,
@@ -482,6 +493,7 @@ export function useNewsApp(): NewsApp {
     setQuery,
     articles,
     savedArticles,
+    trendingTopics,
     isSourceEnabled,
     toggleSource,
     setAllSourcesEnabled,

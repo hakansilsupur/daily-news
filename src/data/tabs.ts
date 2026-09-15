@@ -4,6 +4,18 @@ import type { CountryCode, FeedTab, LanguageFilter, NewsSource, RegionFilter } f
 /** The always-present first tab: everything, narrowed by the ad-hoc filters. */
 export const ALL_TAB_ID = 'all';
 
+/**
+ * The leftmost tab: the same sources as `all`, grouped into the stories several
+ * of them are carrying at once. It draws on the region filter, so it shows what
+ * is big in the chosen country or worldwide.
+ */
+export const TRENDING_TAB_ID = 'trending';
+
+/** Neither built-in tab is a pinned tab, so neither narrows the source set. */
+export function isBuiltInTab(id: string): boolean {
+  return id === ALL_TAB_ID || id === TRENDING_TAB_ID;
+}
+
 export interface AdHocFilters {
   region: RegionFilter;
   language: LanguageFilter;
