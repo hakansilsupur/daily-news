@@ -39,6 +39,11 @@ jobs:
           java-version: 17
 
       - uses: android-actions/setup-android@v3
+        with:
+          # The action's default is "tools platform-tools", and the legacy
+          # "tools" package no longer exists in the SDK repository, so
+          # sdkmanager fails on it. platform-tools is all the Gradle build needs.
+          packages: 'platform-tools'
 
       - name: Install dependencies
         run: npm ci
