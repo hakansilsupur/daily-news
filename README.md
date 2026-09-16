@@ -10,10 +10,13 @@ Built with Expo (SDK 57) + React Native + TypeScript.
 ## Features
 
 - **Gündem (trending)** — the leftmost tab shows the day's top stories from
-  *outside* your source list, via Google News' own ranking for your country or
-  for world news, in your language. If that is unreachable it falls back to
-  grouping your own feed into the stories several of your sources are running at
-  once. Either way it follows the region filter.
+  *outside* your source list, via Google News' own ranking. It follows the
+  region filter: pick Türkiye and you get Türkiye's front page in Turkish; pick
+  Dünya and you get the international desk, which is news from beyond Türkiye
+  rather than Turkish papers writing about abroad (translation turns those
+  headlines back into your language). If the endpoint is unreachable it falls
+  back to grouping your own feed into the stories several of your sources are
+  running at once.
 - **Pinned tabs** — a row of tabs across the top of the feed, like pinned lists
   on X. `All` is always first; `Add +` opens a sheet where you name a tab and
   tick the sources it holds. Long-press a tab to edit or delete it. The choice

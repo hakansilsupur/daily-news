@@ -39,12 +39,22 @@ const LOCALES: Record<CountryCode, Locale> = {
 };
 
 /**
- * The feed for a scope. `world` keeps the reader's own locale but asks for the
- * World section, so a Turkish reader gets world news in Turkish rather than a
- * US front page.
+ * The international desk, used for the world scope.
+ *
+ * Asking the World section in the reader's own locale returns their own
+ * country's papers writing about abroad — Türkiye's world page is still TRT and
+ * Hürriyet. Picking Türkiye should give Turkish news and picking Dünya should
+ * give news from outside it, so the world scope asks an international locale
+ * instead. Those headlines arrive in English and the translation setting turns
+ * them back into the reader's language.
+ */
+const WORLD_LOCALE: Locale = { hl: 'en-US', gl: 'US', ceid: 'US:en' };
+
+/**
+ * The feed for a scope: the chosen country's own front page, or the world desk.
  */
 export function topStoriesUrl(country: CountryCode, scope: 'local' | 'world'): string {
-  const locale = LOCALES[country];
+  const locale = scope === 'world' ? WORLD_LOCALE : LOCALES[country];
   const query = `hl=${locale.hl}&gl=${locale.gl}&ceid=${locale.ceid}`;
 
   return scope === 'world'

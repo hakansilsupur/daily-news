@@ -681,17 +681,29 @@ test('trending keeps a story together instead of repeating it per keyword', () =
   assert.equal(topics[0].articles.length, 3);
 });
 
-test('top stories ask the right locale for each scope', () => {
+test('the home scope is the chosen country’s own front page', () => {
   const turkey = new URL(topStoriesUrl('tr', 'local'));
   assert.equal(turkey.searchParams.get('hl'), 'tr');
   assert.equal(turkey.searchParams.get('gl'), 'TR');
-  assert.ok(!turkey.pathname.includes('WORLD'), 'the home scope is the front page');
-
-  const world = new URL(topStoriesUrl('tr', 'world'));
-  assert.ok(world.pathname.includes('WORLD'), 'world news comes from the World section');
-  assert.equal(world.searchParams.get('hl'), 'tr', 'but still in the reader’s language');
+  assert.ok(!turkey.pathname.includes('WORLD'), 'not the world desk');
 
   assert.equal(new URL(topStoriesUrl('jp', 'local')).searchParams.get('ceid'), 'JP:ja');
+  assert.equal(new URL(topStoriesUrl('de', 'local')).searchParams.get('hl'), 'de');
+});
+
+test('the world scope leaves the country behind', () => {
+  const world = new URL(topStoriesUrl('tr', 'world'));
+
+  assert.ok(world.pathname.includes('WORLD'), 'world news comes from the World section');
+  assert.notEqual(
+    world.searchParams.get('gl'),
+    'TR',
+    'asking Türkiye for world news returns Turkish papers writing about abroad',
+  );
+  assert.equal(world.searchParams.get('hl'), 'en-US');
+
+  // Every country reaches the same international desk.
+  assert.equal(topStoriesUrl('de', 'world'), topStoriesUrl('jp', 'world'));
 });
 
 test('the publisher is recovered from a Google News title', () => {
