@@ -26,6 +26,7 @@ import {
   searchArticles,
 } from '../src/services/newsService';
 import { parseFeed, parseFeedTitle, stripHtml } from '../src/services/rss';
+import { splitGoogleNewsTitle, topStoriesUrl } from '../src/services/topStories';
 import { findTrendingTopics } from '../src/services/trending';
 import {
   buildFallbackUrl,
@@ -541,6 +542,44 @@ const article = (id: string, sourceId: string, title: string, publishedAt = Date
   language: 'tr',
 });
 
+test('Turkish verb endings are not topics', () => {
+  const now = Date.parse('2026-09-15T13:39:00Z');
+
+  // Four unrelated stories whose only shared word is the verb "ediyor".
+  const topics = findTrendingTopics(
+    [
+      article('1', 'cumhuriyet', "'Vali beni tehdit ediyor' demişti: AKP'li vekilden yeni hamle", now),
+      article('2', 'trt', "Etna Yanardağı'nın külü hava ulaşımını olumsuz etkilemeye devam ediyor", now),
+      article('3', 'aa', "Gazze'de tahrip edilen kanalizasyon sağlığa risk teşkil ediyor", now),
+      article('4', 'hurriyet', "Erzurum'da araçlar kendiliğinden hareket ediyor", now),
+      article('5', 'cumhuriyet', 'Gülizar evinde tüfekle vurulmuş halde ölü bulundu', now),
+      article('6', 'hurriyet', "Amasya'da yalnız yaşadığı evinde ölü bulundu", now),
+    ],
+    { now },
+  );
+
+  const keys = topics.map((topic) => topic.key);
+  assert.ok(!keys.includes('ediyor'), 'a conjugation is not a story');
+  assert.ok(!keys.includes('bulundu'), 'nor is a passive past tense');
+  assert.ok(!keys.includes('evinde'), 'nor an everyday noun in a case ending');
+});
+
+test('a capitalised name still beats the verb filter', () => {
+  const now = Date.parse('2026-09-15T13:39:00Z');
+
+  const topics = findTrendingTopics(
+    [
+      article('1', 'a', "Gazze'de ateşkes görüşmeleri sürüyor", now),
+      article('2', 'b', 'Gazze için insani yardım tırları yola çıktı', now),
+      article('3', 'c', "Gazze'de kanalizasyon sistemi risk teşkil ediyor", now),
+    ],
+    { now },
+  );
+
+  assert.equal(topics[0].key, 'gazze');
+  assert.equal(topics[0].sourceCount, 3);
+});
+
 test('trending ranks stories by how many sources carry them', () => {
   const now = Date.parse('2026-09-15T12:00:00Z');
   const topics = findTrendingTopics(
@@ -640,6 +679,38 @@ test('trending keeps a story together instead of repeating it per keyword', () =
 
   assert.equal(topics.length, 1, 'shared articles mean one story, not three');
   assert.equal(topics[0].articles.length, 3);
+});
+
+test('top stories ask the right locale for each scope', () => {
+  const turkey = new URL(topStoriesUrl('tr', 'local'));
+  assert.equal(turkey.searchParams.get('hl'), 'tr');
+  assert.equal(turkey.searchParams.get('gl'), 'TR');
+  assert.ok(!turkey.pathname.includes('WORLD'), 'the home scope is the front page');
+
+  const world = new URL(topStoriesUrl('tr', 'world'));
+  assert.ok(world.pathname.includes('WORLD'), 'world news comes from the World section');
+  assert.equal(world.searchParams.get('hl'), 'tr', 'but still in the reader’s language');
+
+  assert.equal(new URL(topStoriesUrl('jp', 'local')).searchParams.get('ceid'), 'JP:ja');
+});
+
+test('the publisher is recovered from a Google News title', () => {
+  assert.deepEqual(splitGoogleNewsTitle('Merkez Bankası faizi sabit tuttu - Hürriyet'), {
+    title: 'Merkez Bankası faizi sabit tuttu',
+    sourceName: 'Hürriyet',
+  });
+
+  assert.deepEqual(
+    splitGoogleNewsTitle('Gazze - ateşkes görüşmeleri sürüyor - Anadolu Ajansı'),
+    { title: 'Gazze - ateşkes görüşmeleri sürüyor', sourceName: 'Anadolu Ajansı' },
+    'only the last dash separates the publisher',
+  );
+
+  assert.deepEqual(splitGoogleNewsTitle('No publisher here'), { title: 'No publisher here' });
+  assert.deepEqual(
+    splitGoogleNewsTitle('Headline - a very long tail that is plainly not a publisher name at all'),
+    { title: 'Headline - a very long tail that is plainly not a publisher name at all' },
+  );
 });
 
 test('stripHtml removes scripts and decodes entities', () => {

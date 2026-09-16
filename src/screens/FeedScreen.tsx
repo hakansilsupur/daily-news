@@ -89,7 +89,11 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
           </Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
             {trending
-              ? t.trendingSubtitle(app.activeSources.length)
+              ? app.topStories.length > 0
+                ? t.trendingIndependent(
+                    app.region === 'world' ? t.worldLabel : t.countryName[app.country],
+                  )
+                : t.trendingSubtitle(app.activeSources.length)
               : selectedTab
                 ? t.tabSelectedCount(app.activeSources.length)
                 : t.sourceCount(app.activeSources.length, app.regionSources.length)}
@@ -245,6 +249,39 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
       />
     );
   };
+
+  // Top stories come from outside the user's sources; when that endpoint cannot
+  // be reached, the tab still works by grouping the feed the user already has.
+  if (trending && (app.topStories.length > 0 || app.topStoriesLoading)) {
+    return (
+      <FlatList
+        data={app.topStories}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={header}
+        ListEmptyComponent={
+          app.topStoriesLoading ? (
+            <View style={styles.loading}>
+              <ActivityIndicator color={theme.accent} />
+              <Text style={[styles.loadingText, { color: theme.textMuted }]}>{t.fetchingFeeds}</Text>
+            </View>
+          ) : null
+        }
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        removeClippedSubviews
+        initialNumToRender={8}
+        refreshControl={
+          <RefreshControl
+            refreshing={app.refreshing}
+            onRefresh={app.refresh}
+            tintColor={theme.accent}
+            colors={[theme.accent]}
+          />
+        }
+      />
+    );
+  }
 
   if (trending) {
     return (

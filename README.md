@@ -9,10 +9,11 @@ Built with Expo (SDK 57) + React Native + TypeScript.
 
 ## Features
 
-- **Gündem (trending)** — the leftmost tab groups the feed into the stories
-  several newsrooms are running at once, ranked by how many sources carry each
-  one, with the lead article and the other coverage beneath it. It follows the
-  region filter, so it shows what is big in your country or worldwide.
+- **Gündem (trending)** — the leftmost tab shows the day's top stories from
+  *outside* your source list, via Google News' own ranking for your country or
+  for world news, in your language. If that is unreachable it falls back to
+  grouping your own feed into the stories several of your sources are running at
+  once. Either way it follows the region filter.
 - **Pinned tabs** — a row of tabs across the top of the feed, like pinned lists
   on X. `All` is always first; `Add +` opens a sheet where you name a tab and
   tick the sources it holds. Long-press a tab to edit or delete it. The choice
@@ -174,6 +175,7 @@ src/
     discovery.ts            finds a site's feeds from its address
     translate.ts            keyless preview translation, with a fallback engine
     trending.ts             groups the feed into stories by shared coverage
+    topStories.ts           Google News top stories, independent of your sources
     newsService.ts          parallel fetch, dedupe, sort, search, timestamps
     openArticle.ts          in-app browser with system-browser fallback
   storage/prefs.ts          AsyncStorage persistence (filters, language, tabs, feeds, saves)
@@ -255,14 +257,21 @@ languages at runtime.
 
 ## What "trending" means here
 
-There is no view counter to read: publishers do not put "most read" in their
-RSS, and this app has no backend to collect one. Claiming a popularity ranking
-would mean inventing it.
+Two answers, in order of preference.
 
-What the feed genuinely knows is how many independent newsrooms are running the
-same story right now — the signal an editor actually watches. So
-`src/services/trending.ts` groups headlines by shared terms and ranks by
-**distinct sources**, and the UI says `3 kaynak` rather than a view count.
+**Outside the app** (`src/services/topStories.ts`): Google News publishes a
+ranked top-stories RSS feed per country, plus a World section, with no API key.
+That ranking is made from the whole web rather than from whatever sources the
+user happens to have enabled, which is what "trending" ought to mean. X/Twitter
+trends would have been the obvious choice and are not usable: they sit behind a
+paid API tier, and scraping breaks both the terms and, sooner or later, itself.
+
+**Inside the app** (`src/services/trending.ts`), when that endpoint cannot be
+reached: there is no view counter to read — publishers do not put "most read" in
+their RSS, and this app has no backend to collect one — but the feed does know
+how many independent newsrooms are running the same story right now. So
+headlines are grouped by shared terms and ranked by **distinct sources**, and
+the UI says `3 kaynak` rather than a view count.
 
 - A story needs at least two sources; one source is that outlet's story, not a
   trend.
@@ -274,6 +283,11 @@ same story right now — the signal an editor actually watches. So
   separate entry, so a story appears once.
 - Turkish glues suffixes onto words, so a topic ranking on `Bankası` is named by
   the phrase its coverage shares — `Merkez Bankası`.
+- Turkish also conjugates onto the verb, so the most repeated word in a batch of
+  headlines is often `ediyor` or `bulundu` — a tense, not a subject. No stopword
+  list can hold every inflection, so verb endings are matched directly, and a
+  word never written with a capital has to earn its place by appearing in a
+  repeated phrase. Names are exempt from both rules.
 - Only articles from the last 24 hours count.
 
 It costs no extra network: everything is computed from articles already fetched.

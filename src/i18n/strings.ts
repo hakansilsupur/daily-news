@@ -76,6 +76,7 @@ export interface Strings {
   trendingTab: string;
   trendingTitle: string;
   trendingSubtitle: (sources: number) => string;
+  trendingIndependent: (scope: string) => string;
   topicCoverage: (articles: number, sources: number) => string;
   noTrendsTitle: string;
   noTrendsMessage: string;
@@ -188,7 +189,8 @@ const en: Strings = {
 
   trendingTab: 'Trending',
   trendingTitle: 'Trending',
-  trendingSubtitle: (sources) => `What ${sources} sources are covering most`,
+  trendingSubtitle: (sources) => `What ${sources} of your sources are covering most`,
+  trendingIndependent: (scope) => `Top stories in ${scope} · Google News`,
   topicCoverage: (articles, sources) =>
     `${articles} ${articles === 1 ? 'story' : 'stories'} · ${sources} sources`,
   noTrendsTitle: 'No clear trend yet',
@@ -343,7 +345,8 @@ const tr: Strings = {
 
   trendingTab: 'Gündem',
   trendingTitle: 'Gündem',
-  trendingSubtitle: (sources) => `${sources} kaynağın en çok işlediği konular`,
+  trendingSubtitle: (sources) => `Kendi ${sources} kaynağınızın en çok işlediği konular`,
+  trendingIndependent: (scope) => `${scope} gündemi · Google Haberler`,
   topicCoverage: (articles, sources) => `${articles} haber · ${sources} kaynak`,
   noTrendsTitle: 'Henüz belirgin bir gündem yok',
   noTrendsMessage:

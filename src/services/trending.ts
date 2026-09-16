@@ -32,9 +32,32 @@ const STOPWORDS = new Set([
   'first', 'latest', 'update', 'updates', 'report', 'reports', 'you', 'your', 'we',
 ]);
 
+/**
+ * Turkish verb inflections.
+ *
+ * Turkish glues tense and person onto the verb, so a headline's most repeated
+ * word is often a conjugation rather than a subject: four unrelated stories —
+ * a volcano, Gaza, a governor, a road — all end clauses with "ediyor", and
+ * grouping on it produces a topic that means nothing. No stopword list can hold
+ * every inflected form, so the endings themselves are matched.
+ *
+ * A word that appears capitalised mid-headline is exempt: "Parti" ends like a
+ * past-tense verb but is part of a party's name.
+ */
+const VERB_ENDINGS =
+  /(?:[ıiuü]yor|[ae]c[ae][kğ]|m[ıiuü]ş|[aeıioöuü lnrktpşçsz]d[ıiuü]|[lnrktpşçsz]t[ıiuü]|m(?:ak|ek|aya|eye|akta|ekte)|[ae]rek|[ae]l[ıi]m)$/u;
+
 const MIN_TERM_LENGTH = 4;
+/** Below this, a word is too short for the ending rules to judge safely. */
+const MIN_VERB_CHECK_LENGTH = 5;
 /** A story is only trending if more than one newsroom is carrying it. */
 const MIN_SOURCES = 2;
+/**
+ * A word in more than this share of the feed is vocabulary, not news. Only
+ * applied once there are enough articles for the ratio to mean anything.
+ */
+const MAX_DOCUMENT_SHARE = 0.25;
+const MIN_ARTICLES_FOR_SHARE = 20;
 
 export interface TrendingTopic {
   /** Folded term the topic was found by — stable enough to use as a list key. */
@@ -50,6 +73,12 @@ export interface TrendingTopic {
 /** Turkish-aware folding, so `İSTANBUL` and `istanbul` are one term. */
 function fold(value: string): string {
   return value.toLocaleLowerCase('tr');
+}
+
+/** True for a word that starts with an upper-case letter in a cased script. */
+function isCapitalized(word: string): boolean {
+  const first = word[0];
+  return first.toLocaleUpperCase('tr') === first && first.toLocaleLowerCase('tr') !== first;
 }
 
 function tokenize(title: string): string[] {
@@ -85,7 +114,7 @@ export interface TrendingOptions {
  * "Merkez Bankası", "asgari ücret" — that pair is the better name, so the
  * headlines are checked for a shared phrase before falling back to the token.
  */
-function labelFor(key: string, forms: Map<string, number>, articles: Article[]): string {
+function bestPhrase(key: string, articles: Article[]): { surface: string; count: number } | null {
   const phrases = new Map<string, { count: number; surface: string }>();
 
   for (const article of articles) {
@@ -106,8 +135,10 @@ function labelFor(key: string, forms: Map<string, number>, articles: Article[]):
 
   const best = [...phrases.values()].sort((a, b) => b.count - a.count)[0];
   // One article using a phrase is a coincidence; two or more is the story's name.
-  if (best && best.count >= 2) return best.surface;
+  return best && best.count >= 2 ? best : null;
+}
 
+function mostCommonForm(forms: Map<string, number>): string {
   return [...forms.entries()].sort((a, b) => b[1] - a[1])[0][0];
 }
 
@@ -125,31 +156,54 @@ export function findTrendingTopics(
     (article) => !article.publishedAt || now - article.publishedAt <= windowMs,
   );
 
-  const byTerm = new Map<string, { articles: Article[]; sources: Set<string>; forms: Map<string, number> }>();
+  const byTerm = new Map<
+    string,
+    {
+      articles: Article[];
+      sources: Set<string>;
+      forms: Map<string, number>;
+      properHits: number;
+      capitalHits: number;
+    }
+  >();
 
   for (const article of recent) {
     // One count per term per article, however often the word repeats.
     const seen = new Set<string>();
+    const words = tokenize(article.title);
 
-    for (const word of tokenize(article.title)) {
+    for (const [index, word] of words.entries()) {
       const key = fold(word);
       if (seen.has(key) || STOPWORDS.has(key) || excluded.has(key)) continue;
       seen.add(key);
 
       let entry = byTerm.get(key);
       if (!entry) {
-        entry = { articles: [], sources: new Set(), forms: new Map() };
+        entry = { articles: [], sources: new Set(), forms: new Map(), properHits: 0, capitalHits: 0 };
         byTerm.set(key, entry);
       }
 
       entry.articles.push(article);
       entry.sources.add(article.sourceId);
       entry.forms.set(word, (entry.forms.get(word) ?? 0) + 1);
+      if (isCapitalized(word)) {
+        entry.capitalHits += 1;
+        // Capitalised anywhere but the first word: a name, not a sentence start.
+        if (index > 0) entry.properHits += 1;
+      }
     }
   }
 
+  const shareCap = recent.length >= MIN_ARTICLES_FOR_SHARE ? recent.length * MAX_DOCUMENT_SHARE : Infinity;
+
   const ranked = [...byTerm.entries()]
-    .filter(([, entry]) => entry.sources.size >= MIN_SOURCES)
+    .filter(([key, entry]) => {
+      if (entry.sources.size < MIN_SOURCES) return false;
+      if (entry.articles.length > shareCap) return false;
+      // Names are exempt; everything else has to not look like a conjugation.
+      if (entry.properHits > 0) return true;
+      return !(key.length >= MIN_VERB_CHECK_LENGTH && VERB_ENDINGS.test(key));
+    })
     .sort((a, b) => {
       const bySources = b[1].sources.size - a[1].sources.size;
       if (bySources !== 0) return bySources;
@@ -170,11 +224,18 @@ export function findTrendingTopics(
     const freshSources = new Set(fresh.map((article) => article.sourceId));
     if (freshSources.size < MIN_SOURCES) continue;
 
+    const phrase = bestPhrase(key, fresh);
+
+    // A word never written with a capital is ordinary vocabulary — "evinde",
+    // "yaptığı" — unless the coverage repeats it as part of the same phrase.
+    // Names and sentence-openers get in on their capital alone.
+    if (entry.capitalHits === 0 && !phrase) continue;
+
     for (const article of fresh) claimed.add(article.id);
 
     topics.push({
       key,
-      label: labelFor(key, entry.forms, fresh),
+      label: phrase ? phrase.surface : mostCommonForm(entry.forms),
       articles: [...fresh].sort((a, b) => b.publishedAt - a.publishedAt),
       sourceCount: freshSources.size,
     });

@@ -17,6 +17,7 @@ import {
 import { hydrateTranslationCache } from './useTranslatedPreview';
 import { fetchAllFeeds, mergeAndSort, searchArticles } from '../services/newsService';
 import { findTrendingTopics, type TrendingTopic } from '../services/trending';
+import { fetchTopStories } from '../services/topStories';
 import * as prefs from '../storage/prefs';
 import type {
   Article,
@@ -92,8 +93,11 @@ export interface NewsApp {
 
   articles: Article[];
   savedArticles: Article[];
-  /** Stories several sources are carrying at once; only built on the trending tab. */
+  /** Stories several of the user's sources are carrying; the offline fallback. */
   trendingTopics: TrendingTopic[];
+  /** Ranked top stories from outside the user's sources; empty if unreachable. */
+  topStories: Article[];
+  topStoriesLoading: boolean;
 
   isSourceEnabled: (id: string) => boolean;
   toggleSource: (id: string) => void;
@@ -122,6 +126,8 @@ export function useNewsApp(): NewsApp {
   const [languageFilter, setLanguageFilterState] = useState<LanguageFilter>('all');
   const [country, setCountryState] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [translatePreviews, setTranslatePreviewsState] = useState(true);
+  const [topStories, setTopStories] = useState<Article[]>([]);
+  const [topStoriesLoading, setTopStoriesLoading] = useState(false);
   const [translationLanguage, setTranslationLanguageState] = useState<TranslationLanguage>(
     DEFAULT_TRANSLATION_LANGUAGE,
   );
@@ -450,6 +456,30 @@ export function useNewsApp(): NewsApp {
 
   const articles = useMemo(() => searchArticles(rawArticles, query), [rawArticles, query]);
 
+  // --- Top stories, from outside the user's source list ---------------------
+  useEffect(() => {
+    if (!ready || selectedTabId !== TRENDING_TAB_ID) return;
+
+    const controller = new AbortController();
+    setTopStoriesLoading(true);
+
+    (async () => {
+      try {
+        const stories = await fetchTopStories(country, region === 'world' ? 'world' : 'local', controller.signal);
+        if (controller.signal.aborted) return;
+        setTopStories(stories);
+      } catch {
+        // Unreachable or blocked: the tab falls back to grouping the user's own
+        // feed, which is worth more than an error message.
+        if (!controller.signal.aborted) setTopStories([]);
+      } finally {
+        if (!controller.signal.aborted) setTopStoriesLoading(false);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [ready, selectedTabId, country, region, reloadToken]);
+
   const trendingTopics = useMemo(
     () =>
       selectedTabId === TRENDING_TAB_ID
@@ -494,6 +524,8 @@ export function useNewsApp(): NewsApp {
     articles,
     savedArticles,
     trendingTopics,
+    topStories,
+    topStoriesLoading,
     isSourceEnabled,
     toggleSource,
     setAllSourcesEnabled,
