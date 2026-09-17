@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { memo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { usePreviewImage } from '../hooks/usePreviewImage';
 import { useTranslatedPreview } from '../hooks/useTranslatedPreview';
 import type { Strings } from '../i18n';
 import { formatRelativeTime } from '../services/newsService';
@@ -34,6 +35,7 @@ function ArticleCardBase({
 }: Props) {
   const timeLabel = formatRelativeTime(article.publishedAt, Date.now(), language);
   const preview = useTranslatedPreview(article, translateInto, translate);
+  const imageUrl = usePreviewImage(article, true);
 
   return (
     <Pressable
@@ -49,11 +51,15 @@ function ArticleCardBase({
         },
       ]}
     >
-      {article.imageUrl ? (
-        <Image source={{ uri: article.imageUrl }} style={styles.thumb} resizeMode="cover" />
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.thumb} resizeMode="cover" />
       ) : (
+        // No picture anywhere: the publisher's initial reads as deliberate,
+        // where a repeated grey newspaper icon reads as something failing.
         <View style={[styles.thumb, styles.thumbFallback, { backgroundColor: theme.surfaceAlt }]}>
-          <Ionicons name="newspaper-outline" size={22} color={theme.textMuted} />
+          <Text style={[styles.thumbInitial, { color: theme.textMuted }]}>
+            {article.sourceName.trim().charAt(0).toLocaleUpperCase('tr') || '·'}
+          </Text>
         </View>
       )}
 
@@ -119,6 +125,10 @@ const styles = StyleSheet.create({
   thumbFallback: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  thumbInitial: {
+    fontSize: 30,
+    fontWeight: '800',
   },
   body: {
     flex: 1,

@@ -31,6 +31,7 @@ const KEYS = {
   translatePreviews: 'prefs:translatePreviews',
   translationLanguage: 'prefs:translationLanguage',
   translations: 'prefs:translations',
+  previewImages: 'prefs:previewImages',
 } as const;
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -129,6 +130,28 @@ export const saveTranslations = (entries: Record<string, { title: string; summar
       : Object.fromEntries(keys.slice(keys.length - TRANSLATION_CACHE_LIMIT).map((key) => [key, entries[key]]));
 
   return writeJson(KEYS.translations, trimmed);
+};
+
+/**
+ * Card images looked up from article pages, keyed by article id. An empty
+ * string records "asked, and the page advertises none", so a picture-less
+ * article is not re-fetched on every scroll.
+ */
+export const PREVIEW_IMAGE_CACHE_LIMIT = 400;
+
+export const loadPreviewImages = () =>
+  readJson<Record<string, string>>(KEYS.previewImages, {});
+
+export const savePreviewImages = (entries: Record<string, string>) => {
+  const keys = Object.keys(entries);
+  const trimmed =
+    keys.length <= PREVIEW_IMAGE_CACHE_LIMIT
+      ? entries
+      : Object.fromEntries(
+          keys.slice(keys.length - PREVIEW_IMAGE_CACHE_LIMIT).map((key) => [key, entries[key]]),
+        );
+
+  return writeJson(KEYS.previewImages, trimmed);
 };
 
 export const loadFeedTabs = () => readJson<FeedTab[]>(KEYS.feedTabs, []);

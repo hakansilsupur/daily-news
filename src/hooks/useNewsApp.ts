@@ -14,6 +14,7 @@ import {
   type FeedTabError,
   type Strings,
 } from '../i18n';
+import { hydratePreviewImageCache } from './usePreviewImage';
 import { hydrateTranslationCache } from './useTranslatedPreview';
 import { fetchAllFeeds, mergeAndSort, searchArticles } from '../services/newsService';
 import { findTrendingTopics, type TrendingTopic } from '../services/trending';
@@ -155,6 +156,7 @@ export function useNewsApp(): NewsApp {
     // Translations are read once here so a cached card renders without a flash
     // of the untranslated headline.
     void hydrateTranslationCache();
+    void hydratePreviewImageCache();
 
     (async () => {
       const [

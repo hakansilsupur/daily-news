@@ -25,6 +25,7 @@ import {
   mergeAndSort,
   searchArticles,
 } from '../src/services/newsService';
+import { extractOgImage } from '../src/services/previewImage';
 import { parseFeed, parseFeedTitle, stripHtml } from '../src/services/rss';
 import {
   dropEchoedSummary,
@@ -734,6 +735,43 @@ test('a summary that only repeats the headline is dropped', () => {
     'a real summary survives',
   );
   assert.equal(dropEchoedSummary(title, ''), '');
+});
+
+test('a card image is read from the page the publisher advertises', () => {
+  const html = `
+    <html><head>
+      <meta charset="utf-8">
+      <meta property="og:title" content="Not the image">
+      <meta property="og:image" content="/img/lead.jpg">
+    </head></html>`;
+
+  assert.equal(
+    extractOgImage(html, 'https://bbc.co.uk/news/story-1'),
+    'https://bbc.co.uk/img/lead.jpg',
+    'a relative path resolves against the article',
+  );
+
+  assert.equal(
+    extractOgImage('<meta content="https://cdn.test/a.png" property="og:image">', 'https://x.test/'),
+    'https://cdn.test/a.png',
+    'attributes in either order',
+  );
+
+  assert.equal(
+    extractOgImage('<meta name="twitter:image" content="https://cdn.test/t.png">', 'https://x.test/'),
+    'https://cdn.test/t.png',
+    'the Twitter tag is the fallback',
+  );
+});
+
+test('a page with no usable image yields nothing rather than a broken one', () => {
+  assert.equal(extractOgImage('<html><head><title>No tags</title></head></html>', 'https://x.test/'), null);
+  assert.equal(extractOgImage('<meta property="og:image" content="">', 'https://x.test/'), null);
+  assert.equal(
+    extractOgImage('<meta property="og:image" content="javascript:alert(1)">', 'https://x.test/'),
+    null,
+    'only http(s) is worth putting in an <Image>',
+  );
 });
 
 test('the publisher is recovered from a Google News title', () => {

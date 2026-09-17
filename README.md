@@ -177,6 +177,7 @@ src/
     rss.ts                  fetch + parse RSS 2.0 / RSS 1.0 (RDF) / Atom
     discovery.ts            finds a site's feeds from its address
     translate.ts            keyless preview translation, with a fallback engine
+    previewImage.ts         reads a card image from the article's og:image
     trending.ts             groups the feed into stories by shared coverage
     topStories.ts           Google News top stories, independent of your sources
     newsService.ts          parallel fetch, dedupe, sort, search, timestamps
@@ -222,6 +223,23 @@ is unofficial and throttles by IP, so the whole path is best-effort:
 > returns `429` for datacentre IPs and the fallback is blocked outright — so the
 > network path is unverified. The response parsers, URL building, language
 > skipping and quota-notice filtering are unit-tested against fixtures.
+
+## Card images
+
+Most feeds put a picture in the item — an enclosure, a `media:content`, or an
+`<img>` in the description — and the card uses it. Google News' RSS carries
+none of those, so the Gündem tab would be a column of empty boxes.
+
+For an article with no image of its own, `src/services/previewImage.ts` reads
+the `og:image` the publisher advertises on the article page. That is an HTTP
+request per card, so it is kept cheap: only picture-less articles ask, only
+cards that render ask, the request is range-limited to the head of the document
+(and abandoned if a server ignores that and the page is large), at most two run
+at once, and every answer — including "this page has none" — is cached on the
+device so it is asked once ever.
+
+When there is no picture to be had, the card shows the publisher's initial
+rather than a repeated grey icon.
 
 ## Countries
 
