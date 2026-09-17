@@ -26,7 +26,12 @@ import {
   searchArticles,
 } from '../src/services/newsService';
 import { parseFeed, parseFeedTitle, stripHtml } from '../src/services/rss';
-import { splitGoogleNewsTitle, topStoriesUrl } from '../src/services/topStories';
+import {
+  dropEchoedSummary,
+  splitGoogleNewsTitle,
+  topStoriesLanguage,
+  topStoriesUrl,
+} from '../src/services/topStories';
 import { findTrendingTopics } from '../src/services/trending';
 import {
   buildFallbackUrl,
@@ -704,6 +709,31 @@ test('the world scope leaves the country behind', () => {
 
   // Every country reaches the same international desk.
   assert.equal(topStoriesUrl('de', 'world'), topStoriesUrl('jp', 'world'));
+});
+
+test('world-scope stories are tagged in the language they are written in', () => {
+  // Tagging the international desk as Turkish tells the app a Turkish reader
+  // needs no translation, and the headlines stay in English on screen.
+  assert.equal(topStoriesLanguage('tr', 'world'), 'en');
+  assert.equal(topStoriesLanguage('de', 'world'), 'en');
+
+  assert.equal(topStoriesLanguage('tr', 'local'), 'tr');
+  assert.equal(topStoriesLanguage('de', 'local'), 'de');
+  assert.equal(topStoriesLanguage('in', 'local'), 'en', 'a hyphenated locale keeps its base');
+});
+
+test('a summary that only repeats the headline is dropped', () => {
+  const title = 'Oil extends losses as Saudi Arabia offers crude transfers';
+
+  assert.equal(dropEchoedSummary(title, `${title} CNBC`), '', 'title plus publisher says nothing new');
+  assert.equal(dropEchoedSummary(title, title.toLocaleUpperCase('tr')), '', 'casing does not make it new');
+  assert.equal(dropEchoedSummary(title, `${title}   `), '');
+  assert.equal(
+    dropEchoedSummary(title, 'Brent fell 2% after the report, its third weekly loss.'),
+    'Brent fell 2% after the report, its third weekly loss.',
+    'a real summary survives',
+  );
+  assert.equal(dropEchoedSummary(title, ''), '');
 });
 
 test('the publisher is recovered from a Google News title', () => {

@@ -79,14 +79,45 @@ export function splitGoogleNewsTitle(raw: string): { title: string; sourceName?:
   return { title, sourceName: source };
 }
 
+/**
+ * Google News repeats the headline in the item description, followed by the
+ * publisher — so a card would show the same sentence twice. When the summary
+ * says nothing the title has not already said, it is dropped.
+ */
+export function dropEchoedSummary(title: string, summary: string): string {
+  const fold = (value: string) => value.toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
+  const foldedTitle = fold(title);
+  const foldedSummary = fold(summary);
+
+  if (!foldedSummary || !foldedTitle) return summary.trim();
+  return foldedSummary.startsWith(foldedTitle) ? '' : summary.trim();
+}
+
+/**
+ * The language the fetched stories are actually written in.
+ *
+ * The world scope reads the international desk, so its articles are in that
+ * desk's language — not the reader's country's. Getting this wrong tells the
+ * app they need no translation and leaves them untranslated on screen.
+ */
+export function topStoriesLanguage(
+  country: CountryCode,
+  scope: 'local' | 'world',
+): SourceLanguage {
+  const locale = scope === 'world' ? WORLD_LOCALE : LOCALES[country];
+  return locale.hl.split('-')[0] as SourceLanguage;
+}
+
 function feedSource(country: CountryCode, scope: 'local' | 'world'): NewsSource {
+  const locale = scope === 'world' ? WORLD_LOCALE : LOCALES[country];
+
   return {
     id: `topstories:${scope === 'world' ? 'world' : country}`,
     name: 'Google News',
     region: (scope === 'world' ? 'world' : country) as SourceOrigin,
     category: 'general',
     feedUrl: topStoriesUrl(country, scope),
-    language: LOCALES[country].hl.split('-')[0] as SourceLanguage,
+    language: topStoriesLanguage(country, scope),
   };
 }
 
@@ -117,7 +148,12 @@ export async function fetchTopStories(
 
     return parseFeed(await response.text(), source).map((article) => {
       const { title, sourceName } = splitGoogleNewsTitle(article.title);
-      return { ...article, title, sourceName: sourceName ?? article.sourceName };
+      return {
+        ...article,
+        title,
+        summary: dropEchoedSummary(title, article.summary),
+        sourceName: sourceName ?? article.sourceName,
+      };
     });
   } finally {
     clearTimeout(timeout);
