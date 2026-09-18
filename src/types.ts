@@ -83,6 +83,8 @@ export interface Article {
   region: SourceOrigin;
   /** The source's language — decides whether a preview needs translating. */
   language?: SourceLanguage;
+  /** Home page of the newsroom that published it, when a feed names one. */
+  publisherUrl?: string;
 }
 
 /**

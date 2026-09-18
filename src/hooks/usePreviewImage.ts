@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { fetchPreviewImage } from '../services/previewImage';
+import { faviconUrl, fetchPreviewImage } from '../services/previewImage';
 import * as prefs from '../storage/prefs';
 import type { Article } from '../types';
 
@@ -30,12 +30,22 @@ function persistSoon(): void {
   }, 2000);
 }
 
+export interface CardImage {
+  uri: string;
+  /**
+   * True for a publisher's mark rather than a picture of the story: it is drawn
+   * to fit inside the tile instead of filling it, since a cropped logo is worse
+   * than a small one.
+   */
+  isLogo: boolean;
+}
+
 /**
- * The picture to show on a card: the feed's own, or one read from the article
- * page for feeds that carry none. Returns null while there is nothing to show,
- * which leaves the card's placeholder in place.
+ * The picture to show on a card, in order of preference: the one the feed
+ * carried, the one the article page advertises, or the publisher's mark.
+ * Returns null when there is nothing to show at all.
  */
-export function usePreviewImage(article: Article, enabled: boolean): string | null {
+export function usePreviewImage(article: Article, enabled: boolean): CardImage | null {
   const needsLookup = enabled && !article.imageUrl && Boolean(article.link);
 
   const [found, setFound] = useState<string | null>(() =>
@@ -72,5 +82,9 @@ export function usePreviewImage(article: Article, enabled: boolean): string | nu
     };
   }, [article.id, article.link, needsLookup]);
 
-  return article.imageUrl ?? found;
+  if (article.imageUrl) return { uri: article.imageUrl, isLogo: false };
+  if (found) return { uri: found, isLogo: false };
+
+  const logo = article.publisherUrl ? faviconUrl(article.publisherUrl) : null;
+  return logo ? { uri: logo, isLogo: true } : null;
 }

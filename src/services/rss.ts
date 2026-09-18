@@ -129,6 +129,9 @@ function toArticle(entry: Record<string, unknown>, source: NewsSource): Article 
     sourceName: source.name,
     region: source.region,
     language: source.language,
+    // Aggregator feeds name the real publisher's site here; a publisher's own
+    // feed usually omits it, in which case there is nothing to record.
+    publisherUrl: attr(entry.source, 'url') || undefined,
   };
 }
 

@@ -25,7 +25,7 @@ import {
   mergeAndSort,
   searchArticles,
 } from '../src/services/newsService';
-import { extractOgImage } from '../src/services/previewImage';
+import { extractOgImage, faviconUrl, isAggregatorLink } from '../src/services/previewImage';
 import { parseFeed, parseFeedTitle, stripHtml } from '../src/services/rss';
 import {
   dropEchoedSummary,
@@ -772,6 +772,41 @@ test('a page with no usable image yields nothing rather than a broken one', () =
     null,
     'only http(s) is worth putting in an <Image>',
   );
+});
+
+test('aggregator links are not asked for a picture', () => {
+  // The interstitial answers with its own logo, so every card would show the
+  // same Google News icon — a real image that says nothing about the story.
+  assert.equal(isAggregatorLink('https://news.google.com/rss/articles/CBMiK2h0dHBz'), true);
+  assert.equal(isAggregatorLink('https://www.news.google.com/rss/articles/abc'), true);
+  assert.equal(isAggregatorLink('https://www.bbc.co.uk/news/story-1'), false);
+  assert.equal(isAggregatorLink('not a url'), false);
+});
+
+test('a publisher mark is built from the site their feed names', () => {
+  const url = faviconUrl('https://www.bbc.co.uk');
+  assert.ok(url && url.includes('www.bbc.co.uk'), 'the host is what identifies them');
+  assert.ok(url && url.includes('sz=128'), 'asked large enough for a thumbnail');
+
+  assert.equal(faviconUrl('https://localhost'), null, 'no dot, no site');
+  assert.equal(faviconUrl('nonsense'), null);
+});
+
+test('a feed that names the publisher records it on the article', () => {
+  const withSource = `<?xml version="1.0"?>
+    <rss version="2.0"><channel>
+      <item>
+        <title>Story - BBC</title>
+        <link>https://news.google.com/rss/articles/CBMiK2h0</link>
+        <source url="https://www.bbc.co.uk">BBC</source>
+      </item>
+    </channel></rss>`;
+
+  const [article] = parseFeed(withSource, source('gnews', 'world'));
+  assert.equal(article.publisherUrl, 'https://www.bbc.co.uk');
+
+  const [plain] = parseFeed(RSS_2, source('rss2', 'tr'));
+  assert.equal(plain.publisherUrl, undefined, 'a publisher’s own feed names no other site');
 });
 
 test('the publisher is recovered from a Google News title', () => {

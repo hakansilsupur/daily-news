@@ -35,7 +35,7 @@ function ArticleCardBase({
 }: Props) {
   const timeLabel = formatRelativeTime(article.publishedAt, Date.now(), language);
   const preview = useTranslatedPreview(article, translateInto, translate);
-  const imageUrl = usePreviewImage(article, true);
+  const image = usePreviewImage(article, true);
 
   return (
     <Pressable
@@ -51,8 +51,12 @@ function ArticleCardBase({
         },
       ]}
     >
-      {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={styles.thumb} resizeMode="cover" />
+      {image ? (
+        <Image
+          source={{ uri: image.uri }}
+          style={[styles.thumb, image.isLogo && { backgroundColor: theme.surfaceAlt, padding: 14 }]}
+          resizeMode={image.isLogo ? 'contain' : 'cover'}
+        />
       ) : (
         // No picture anywhere: the publisher's initial reads as deliberate,
         // where a repeated grey newspaper icon reads as something failing.

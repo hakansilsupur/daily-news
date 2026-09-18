@@ -12,6 +12,39 @@
  * render ask, the response is range-limited to the head of the document, and
  * every answer is cached on the device.
  */
+/**
+ * Aggregators whose links never reach the publisher.
+ *
+ * A Google News link opens an interstitial that redirects in JavaScript, so a
+ * plain fetch stops there and reads that page's own `og:image` — the Google
+ * News logo, on every card. Asking is worse than not asking: it spends a
+ * request to fetch a picture that says nothing about the story.
+ */
+const AGGREGATOR_HOSTS = ['news.google.com', 'news.yahoo.com'];
+
+export function isAggregatorLink(url: string): boolean {
+  try {
+    return AGGREGATOR_HOSTS.includes(new URL(url).hostname.replace(/^www\./, ''));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The publisher's own mark, from the site a feed names for them. Not a picture
+ * of the story, but it identifies the newsroom at a glance — which is what a
+ * thumbnail is for on a headline with no photograph of its own.
+ */
+export function faviconUrl(siteUrl: string, size = 128): string | null {
+  try {
+    const host = new URL(siteUrl).hostname;
+    if (!host.includes('.')) return null;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=${size}`;
+  } catch {
+    return null;
+  }
+}
+
 const TIMEOUT_MS = 8000;
 const MAX_CONCURRENT = 2;
 /** Enough for the <head> of any sane page. */
@@ -75,6 +108,8 @@ export async function fetchPreviewImage(
   articleUrl: string,
   signal?: AbortSignal,
 ): Promise<string | null> {
+  if (isAggregatorLink(articleUrl)) return null;
+
   return withSlot(async () => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);

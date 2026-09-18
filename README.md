@@ -238,8 +238,11 @@ cards that render ask, the request is range-limited to the head of the document
 at once, and every answer — including "this page has none" — is cached on the
 device so it is asked once ever.
 
-When there is no picture to be had, the card shows the publisher's initial
-rather than a repeated grey icon.
+A Google News link is the exception: it opens an interstitial that redirects in
+JavaScript, so a fetch stops there and reads *its* `og:image` — the Google News
+logo, on every card. Those links are skipped rather than asked. Instead the card
+falls back to the publisher's own mark, built from the site named in the feed's
+`<source url>` tag, and failing that to the publisher's initial.
 
 ## Countries
 
