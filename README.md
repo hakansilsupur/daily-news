@@ -60,8 +60,13 @@ Built with Expo (SDK 57) + React Native + TypeScript.
   Türkiye or Worldwide. Custom feeds sit alongside the built-in ones.
 - **Unified timeline** — all selected feeds are fetched in parallel, merged,
   deduplicated by link, and sorted newest first.
-- **Search** across headline, summary and source name (Turkish-aware casing, so
-  `ANKARA` matches `Ankara` and `İSTANBUL` matches `İstanbul`).
+- **Search a topic, beyond your sources** — typing in the search box filters
+  your own articles instantly (Turkish-aware casing, so `ANKARA` matches
+  `Ankara`) and, after a pause in typing, also asks Google News for that topic
+  across the whole web. Your own sources are listed first; web results follow,
+  with stories you already have filtered out. The subtitle says how many came
+  from beyond your sources. It follows the region filter, so the same query
+  searches Türkiye or the international desk.
 - **Save for later** — bookmark articles into a Saved tab, stored on device.
 - **Resilient fetching** — a feed that is slow (12s timeout), offline, or
   returning garbage never blocks the others; the UI reports which sources failed

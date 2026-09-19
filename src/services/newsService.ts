@@ -52,6 +52,31 @@ export function searchArticles(articles: Article[], query: string): Article[] {
   );
 }
 
+/**
+ * Search results: what the user's own feeds carry, then what the web turned up.
+ *
+ * Their sources come first — those are the outlets they chose — and a web
+ * result is dropped when it is the same story. Links cannot settle that here:
+ * an aggregator hands back its own redirect URL, never the publisher's, so
+ * titles are compared instead, folded Turkish-aware.
+ */
+export function mergeSearchResults(own: Article[], web: Article[]): Article[] {
+  const seenTitles = new Set(own.map((article) => article.title.toLocaleLowerCase('tr').trim()));
+  const seenLinks = new Set(own.map((article) => article.link.replace(/[#?].*$/, '')));
+
+  const extra = web.filter((article) => {
+    const title = article.title.toLocaleLowerCase('tr').trim();
+    const link = article.link.replace(/[#?].*$/, '');
+    if (seenTitles.has(title) || seenLinks.has(link)) return false;
+
+    seenTitles.add(title);
+    seenLinks.add(link);
+    return true;
+  });
+
+  return [...own, ...extra];
+}
+
 export function formatRelativeTime(
   timestamp: number,
   now: number = Date.now(),

@@ -46,6 +46,7 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
   ).map((value) => ({ value, label: regionFilterLabel(t, value, app.country) }));
 
   const trending = app.selectedTabId === TRENDING_TAB_ID;
+  const searching = app.query.trim().length > 0;
 
   const renderTopic = useCallback(
     ({ item, index }: { item: TrendingTopic; index: number }) => (
@@ -85,10 +86,18 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
       <View style={styles.titleRow}>
         <View>
           <Text style={[styles.title, { color: theme.text }]}>
-            {trending ? t.trendingTitle : selectedTab ? selectedTab.name : t.feedTitle}
+            {searching
+              ? t.searchTitle
+              : trending
+                ? t.trendingTitle
+                : selectedTab
+                  ? selectedTab.name
+                  : t.feedTitle}
           </Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            {trending
+            {searching
+              ? t.searchSubtitle(app.searchResults.length, app.webResultCount)
+              : trending
               ? app.topStories.length > 0
                 ? t.trendingIndependent(
                     app.region === 'world' ? t.worldLabel : t.countryName[app.country],
@@ -249,6 +258,47 @@ export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: P
       />
     );
   };
+
+  // A query turns the screen into results: the user's own matches, then what
+  // the topic search found beyond them. It applies on every tab, since looking
+  // for a story is not a property of which tab you happened to be on.
+  if (searching) {
+    return (
+      <FlatList
+        data={app.searchResults}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={header}
+        ListEmptyComponent={
+          app.searchingWeb ? (
+            <View style={styles.loading}>
+              <ActivityIndicator color={theme.accent} />
+              <Text style={[styles.loadingText, { color: theme.textMuted }]}>{t.searchingWeb}</Text>
+            </View>
+          ) : (
+            <EmptyState
+              theme={theme}
+              icon="search-outline"
+              title={t.noMatchesTitle}
+              message={t.noMatchesMessage(app.query)}
+            />
+          )
+        }
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        removeClippedSubviews
+        initialNumToRender={8}
+        refreshControl={
+          <RefreshControl
+            refreshing={app.refreshing}
+            onRefresh={app.refresh}
+            tintColor={theme.accent}
+            colors={[theme.accent]}
+          />
+        }
+      />
+    );
+  }
 
   // Top stories come from outside the user's sources; when that endpoint cannot
   // be reached, the tab still works by grouping the feed the user already has.

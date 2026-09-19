@@ -50,6 +50,32 @@ const LOCALES: Record<CountryCode, Locale> = {
  */
 const WORLD_LOCALE: Locale = { hl: 'en-US', gl: 'US', ceid: 'US:en' };
 
+/** The locale a scope reads in — shared with the topic search. */
+export function localeFor(country: CountryCode, scope: 'local' | 'world'): Locale {
+  return scope === 'world' ? WORLD_LOCALE : LOCALES[country];
+}
+
+/**
+ * Searches the whole of Google News for a topic, rather than the sources the
+ * user happens to have added. This is what makes the search box able to find a
+ * story no feed in the list is carrying.
+ */
+export function newsSearchUrl(
+  query: string,
+  country: CountryCode,
+  scope: 'local' | 'world',
+): string {
+  const locale = localeFor(country, scope);
+  const params = new URLSearchParams({
+    q: query.trim(),
+    hl: locale.hl,
+    gl: locale.gl,
+    ceid: locale.ceid,
+  });
+
+  return `${ENDPOINT}/search?${params.toString()}`;
+}
+
 /**
  * The feed for a scope: the chosen country's own front page, or the world desk.
  */
@@ -108,29 +134,24 @@ export function topStoriesLanguage(
   return locale.hl.split('-')[0] as SourceLanguage;
 }
 
-function feedSource(country: CountryCode, scope: 'local' | 'world'): NewsSource {
-  const locale = scope === 'world' ? WORLD_LOCALE : LOCALES[country];
-
+function feedSource(
+  id: string,
+  feedUrl: string,
+  country: CountryCode,
+  scope: 'local' | 'world',
+): NewsSource {
   return {
-    id: `topstories:${scope === 'world' ? 'world' : country}`,
+    id,
     name: 'Google News',
     region: (scope === 'world' ? 'world' : country) as SourceOrigin,
     category: 'general',
-    feedUrl: topStoriesUrl(country, scope),
+    feedUrl,
     language: topStoriesLanguage(country, scope),
   };
 }
 
-/**
- * Fetches the ranked top stories. Order is the ranking — the endpoint returns
- * them strongest first — so nothing is re-sorted by date here.
- */
-export async function fetchTopStories(
-  country: CountryCode,
-  scope: 'local' | 'world',
-  signal?: AbortSignal,
-): Promise<Article[]> {
-  const source = feedSource(country, scope);
+/** One request, parsed and tidied: publisher out of the title, echo dropped. */
+async function fetchGoogleNews(source: NewsSource, signal?: AbortSignal): Promise<Article[]> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   const onAbort = () => controller.abort();
@@ -159,4 +180,40 @@ export async function fetchTopStories(
     clearTimeout(timeout);
     signal?.removeEventListener('abort', onAbort);
   }
+}
+
+/**
+ * Fetches the ranked top stories. Order is the ranking — the endpoint returns
+ * them strongest first — so nothing is re-sorted by date here.
+ */
+export async function fetchTopStories(
+  country: CountryCode,
+  scope: 'local' | 'world',
+  signal?: AbortSignal,
+): Promise<Article[]> {
+  const id = `topstories:${scope === 'world' ? 'world' : country}`;
+  return fetchGoogleNews(feedSource(id, topStoriesUrl(country, scope), country, scope), signal);
+}
+
+/**
+ * Searches for a topic across the whole of Google News. The user's own feeds
+ * only carry what they carry; this finds a story none of them is running.
+ */
+export async function searchNews(
+  query: string,
+  country: CountryCode,
+  scope: 'local' | 'world',
+  signal?: AbortSignal,
+): Promise<Article[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const source = feedSource(
+    `search:${scope === 'world' ? 'world' : country}`,
+    newsSearchUrl(trimmed, country, scope),
+    country,
+    scope,
+  );
+
+  return fetchGoogleNews(source, signal);
 }

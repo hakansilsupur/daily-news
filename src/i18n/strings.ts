@@ -73,6 +73,10 @@ export interface Strings {
   addedLabel: string;
   manualEntryGroup: string;
 
+  searchTitle: string;
+  searchSubtitle: (total: number, fromWeb: number) => string;
+  searchingWeb: string;
+
   trendingTab: string;
   trendingTitle: string;
   trendingSubtitle: (sources: number) => string;
@@ -133,7 +137,7 @@ const en: Strings = {
   feedTitle: 'Headlines',
   sourceCount: (active, total) => `${active} of ${total} sources`,
   updatedSuffix: (relativeTime) => ` · updated ${relativeTime}`,
-  searchPlaceholder: 'Search headlines',
+  searchPlaceholder: 'Search a topic, in your feeds and the web',
   filterSourcesLabel: 'Filter sources',
   clearSearchLabel: 'Clear search',
   sourcesUnreachable: (count) =>
@@ -186,6 +190,13 @@ const en: Strings = {
   addLabel: 'Add',
   addedLabel: 'Added',
   manualEntryGroup: 'OR ENTER A FEED URL',
+
+  searchTitle: 'Search',
+  searchSubtitle: (total, fromWeb) =>
+    fromWeb > 0
+      ? `${total} results · ${fromWeb} from beyond your sources`
+      : `${total} results in your sources`,
+  searchingWeb: 'Searching the web…',
 
   trendingTab: 'Trending',
   trendingTitle: 'Trending',
@@ -291,7 +302,7 @@ const tr: Strings = {
   feedTitle: 'Haberler',
   sourceCount: (active, total) => `${total} kaynaktan ${active} tanesi`,
   updatedSuffix: (relativeTime) => ` · ${relativeTime} güncellendi`,
-  searchPlaceholder: 'Haberlerde ara',
+  searchPlaceholder: 'Konu ara — kaynaklarınız ve web',
   filterSourcesLabel: 'Kaynakları filtrele',
   clearSearchLabel: 'Aramayı temizle',
   sourcesUnreachable: (count) => `${count} kaynağa ulaşılamadı.`,
@@ -342,6 +353,13 @@ const tr: Strings = {
   addLabel: 'Ekle',
   addedLabel: 'Eklendi',
   manualEntryGroup: 'YA DA AKIŞ ADRESİ GİRİN',
+
+  searchTitle: 'Arama',
+  searchSubtitle: (total, fromWeb) =>
+    fromWeb > 0
+      ? `${total} sonuç · ${fromWeb} tanesi kaynaklarınız dışından`
+      : `Kaynaklarınızda ${total} sonuç`,
+  searchingWeb: 'Web\'de aranıyor…',
 
   trendingTab: 'Gündem',
   trendingTitle: 'Gündem',

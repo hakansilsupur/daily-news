@@ -23,12 +23,14 @@ import { resolveLanguage, STRINGS } from '../src/i18n';
 import {
   formatRelativeTime,
   mergeAndSort,
+  mergeSearchResults,
   searchArticles,
 } from '../src/services/newsService';
 import { extractOgImage, faviconUrl, isAggregatorLink } from '../src/services/previewImage';
 import { parseFeed, parseFeedTitle, stripHtml } from '../src/services/rss';
 import {
   dropEchoedSummary,
+  newsSearchUrl,
   splitGoogleNewsTitle,
   topStoriesLanguage,
   topStoriesUrl,
@@ -772,6 +774,42 @@ test('a page with no usable image yields nothing rather than a broken one', () =
     null,
     'only http(s) is worth putting in an <Image>',
   );
+});
+
+test('a topic search asks the scope’s locale', () => {
+  const turkey = new URL(newsSearchUrl('deprem', 'tr', 'local'));
+  assert.ok(turkey.pathname.endsWith('/search'));
+  assert.equal(turkey.searchParams.get('q'), 'deprem');
+  assert.equal(turkey.searchParams.get('hl'), 'tr');
+
+  const world = new URL(newsSearchUrl('earthquake', 'tr', 'world'));
+  assert.equal(world.searchParams.get('hl'), 'en-US', 'Dünya searches the international desk');
+
+  const spaced = new URL(newsSearchUrl('  merkez bankası  ', 'tr', 'local'));
+  assert.equal(spaced.searchParams.get('q'), 'merkez bankası', 'trimmed, and spaces survive');
+});
+
+test('search puts the reader’s own sources first and drops repeats', () => {
+  const own = [
+    article('own-1', 'trt', 'Merkez Bankası faiz kararını açıkladı'),
+    article('own-2', 'aa', 'Enflasyon verileri yayımlandı'),
+  ];
+  const web = [
+    // Same story, but an aggregator link, so only the title can match it.
+    { ...article('web-1', 'gnews', 'Merkez Bankası faiz kararını açıkladı'), link: 'https://news.google.com/rss/articles/CBMi' },
+    article('web-2', 'gnews', 'Analistlerden faiz yorumu'),
+  ];
+
+  const merged = mergeSearchResults(own, web);
+
+  assert.deepEqual(
+    merged.map((a) => a.id),
+    ['own-1', 'own-2', 'web-2'],
+    'their own sources lead, and the duplicate story is not repeated',
+  );
+
+  assert.deepEqual(mergeSearchResults(own, []).map((a) => a.id), ['own-1', 'own-2']);
+  assert.deepEqual(mergeSearchResults([], web).map((a) => a.id), ['web-1', 'web-2']);
 });
 
 test('aggregator links are not asked for a picture', () => {

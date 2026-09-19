@@ -16,9 +16,14 @@ import {
 } from '../i18n';
 import { hydratePreviewImageCache } from './usePreviewImage';
 import { hydrateTranslationCache } from './useTranslatedPreview';
-import { fetchAllFeeds, mergeAndSort, searchArticles } from '../services/newsService';
+import {
+  fetchAllFeeds,
+  mergeAndSort,
+  mergeSearchResults,
+  searchArticles,
+} from '../services/newsService';
 import { findTrendingTopics, type TrendingTopic } from '../services/trending';
-import { fetchTopStories } from '../services/topStories';
+import { fetchTopStories, searchNews } from '../services/topStories';
 import * as prefs from '../storage/prefs';
 import type {
   Article,
@@ -94,6 +99,14 @@ export interface NewsApp {
 
   articles: Article[];
   savedArticles: Article[];
+  /**
+   * What the search box shows: the user's own matching articles, followed by
+   * anything the web search turned up that they were not already carrying.
+   */
+  searchResults: Article[];
+  /** How many of those came from beyond the user's sources. */
+  webResultCount: number;
+  searchingWeb: boolean;
   /** Stories several of the user's sources are carrying; the offline fallback. */
   trendingTopics: TrendingTopic[];
   /** Ranked top stories from outside the user's sources; empty if unreachable. */
@@ -128,6 +141,8 @@ export function useNewsApp(): NewsApp {
   const [country, setCountryState] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [translatePreviews, setTranslatePreviewsState] = useState(true);
   const [topStories, setTopStories] = useState<Article[]>([]);
+  const [webResults, setWebResults] = useState<Article[]>([]);
+  const [searchingWeb, setSearchingWeb] = useState(false);
   const [topStoriesLoading, setTopStoriesLoading] = useState(false);
   const [translationLanguage, setTranslationLanguageState] = useState<TranslationLanguage>(
     DEFAULT_TRANSLATION_LANGUAGE,
@@ -458,6 +473,58 @@ export function useNewsApp(): NewsApp {
 
   const articles = useMemo(() => searchArticles(rawArticles, query), [rawArticles, query]);
 
+  // --- Topic search, beyond the user's own sources --------------------------
+  useEffect(() => {
+    const trimmed = query.trim();
+    // Two characters is not a topic, and asking on every keystroke would be a
+    // request per letter, so the search waits for a pause in typing.
+    if (!ready || trimmed.length < 3) {
+      setWebResults([]);
+      setSearchingWeb(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      setSearchingWeb(true);
+
+      (async () => {
+        try {
+          const found = await searchNews(
+            trimmed,
+            country,
+            region === 'world' ? 'world' : 'local',
+            controller.signal,
+          );
+          if (!controller.signal.aborted) setWebResults(found);
+        } catch {
+          // Unreachable: the user still has their own matches below.
+          if (!controller.signal.aborted) setWebResults([]);
+        } finally {
+          if (!controller.signal.aborted) setSearchingWeb(false);
+        }
+      })();
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [ready, query, country, region]);
+
+  const searchResults = useMemo(() => {
+    if (!query.trim()) return [];
+    // On the trending tab the visible list is the top stories, not the feed.
+    const own = selectedTabId === TRENDING_TAB_ID ? searchArticles(topStories, query) : articles;
+    return mergeSearchResults(own, webResults);
+  }, [query, selectedTabId, topStories, articles, webResults]);
+
+  const webResultCount = useMemo(() => {
+    if (!query.trim()) return 0;
+    const own = selectedTabId === TRENDING_TAB_ID ? searchArticles(topStories, query) : articles;
+    return Math.max(0, searchResults.length - own.length);
+  }, [query, selectedTabId, topStories, articles, searchResults]);
+
   // --- Top stories, from outside the user's source list ---------------------
   useEffect(() => {
     if (!ready || selectedTabId !== TRENDING_TAB_ID) return;
@@ -525,6 +592,9 @@ export function useNewsApp(): NewsApp {
     setQuery,
     articles,
     savedArticles,
+    searchResults,
+    webResultCount,
+    searchingWeb,
     trendingTopics,
     topStories,
     topStoriesLoading,
