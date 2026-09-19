@@ -5,15 +5,16 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Strings } from '../i18n';
 import type { Theme } from '../theme';
 
-export type TabKey = 'feed' | 'saved';
+export type TabKey = 'feed' | 'podcasts' | 'saved';
 
 const TABS: {
   key: TabKey;
-  labelKey: 'tabHeadlines' | 'tabSaved';
+  labelKey: 'tabHeadlines' | 'tabPodcasts' | 'tabSaved';
   icon: ComponentProps<typeof Ionicons>['name'];
   activeIcon: ComponentProps<typeof Ionicons>['name'];
 }[] = [
   { key: 'feed', labelKey: 'tabHeadlines', icon: 'newspaper-outline', activeIcon: 'newspaper' },
+  { key: 'podcasts', labelKey: 'tabPodcasts', icon: 'mic-outline', activeIcon: 'mic' },
   { key: 'saved', labelKey: 'tabSaved', icon: 'bookmark-outline', activeIcon: 'bookmark' },
 ];
 

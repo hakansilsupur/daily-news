@@ -26,6 +26,16 @@ import {
   mergeSearchResults,
   searchArticles,
 } from '../src/services/newsService';
+import {
+  formatDuration,
+  lookupUrl,
+  parseDuration,
+  parseEpisodes,
+  parseLookup,
+  parseTopPodcasts,
+  storefrontFor,
+  topPodcastsUrl,
+} from '../src/services/podcasts';
 import { extractOgImage, faviconUrl, isAggregatorLink } from '../src/services/previewImage';
 import { parseFeed, parseFeedTitle, stripHtml } from '../src/services/rss';
 import {
@@ -864,6 +874,105 @@ test('the publisher is recovered from a Google News title', () => {
     splitGoogleNewsTitle('Headline - a very long tail that is plainly not a publisher name at all'),
     { title: 'Headline - a very long tail that is plainly not a publisher name at all' },
   );
+});
+
+test('the podcast chart is read per country, with the world scope borrowing one', () => {
+  assert.ok(topPodcastsUrl('tr', 'local').includes('/tr/podcasts/top/'));
+  assert.ok(topPodcastsUrl('jp', 'local').includes('/jp/podcasts/top/'));
+  assert.equal(storefrontFor('tr', 'world'), 'us', 'there is no worldwide chart to ask for');
+  assert.ok(topPodcastsUrl('tr', 'local', 10).includes('/top/10/'));
+});
+
+test('chart entries become shows, with artwork asked at a usable size', () => {
+  const body = JSON.stringify({
+    feed: {
+      results: [
+        {
+          id: '1200361736',
+          name: 'Anlatılan Senin Hikâyendir',
+          artistName: 'Podbee Media',
+          artworkUrl100: 'https://is1.mzstatic.com/image/thumb/abc/100x100bb.png',
+          url: 'https://podcasts.apple.com/tr/podcast/id1200361736',
+        },
+        { name: 'No id here' },
+      ],
+    },
+  });
+
+  const [show, ...rest] = parseTopPodcasts(body);
+
+  assert.equal(rest.length, 0, 'an entry with no id is not a show');
+  assert.equal(show.name, 'Anlatılan Senin Hikâyendir');
+  assert.equal(show.artist, 'Podbee Media');
+  assert.equal(show.artworkUrl, 'https://is1.mzstatic.com/image/thumb/abc/300x300bb.png');
+
+  assert.deepEqual(parseTopPodcasts('not json'), []);
+  assert.deepEqual(parseTopPodcasts('{}'), []);
+});
+
+test('the lookup supplies the feed each show actually publishes', () => {
+  const body = JSON.stringify({
+    resultCount: 2,
+    results: [
+      {
+        collectionId: 1200361736,
+        feedUrl: 'https://feeds.podbee.net/show.xml',
+        artworkUrl600: 'https://is1.mzstatic.com/image/thumb/abc/600x600bb.png',
+      },
+      { collectionId: 999, artworkUrl100: 'https://is1.mzstatic.com/x/100x100bb.png' },
+    ],
+  });
+
+  const found = parseLookup(body);
+
+  assert.equal(found.get('1200361736')?.feedUrl, 'https://feeds.podbee.net/show.xml');
+  assert.equal(found.get('999')?.feedUrl, undefined, 'a show can have no readable feed');
+  assert.equal(found.get('999')?.artworkUrl, 'https://is1.mzstatic.com/x/300x300bb.png');
+
+  assert.equal(parseLookup('nonsense').size, 0);
+  assert.ok(lookupUrl(['1', '2', '3']).includes('id=1,2,3'), 'one request for the whole chart');
+});
+
+test('episodes come from the audio enclosure, and rows without one are dropped', () => {
+  const xml = `<?xml version="1.0"?>
+    <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+      <channel>
+        <title>A show</title>
+        <item>
+          <title>Bölüm 12: Deprem</title>
+          <description><![CDATA[<p>Bu bölümde <b>deprem</b>.</p>]]></description>
+          <pubDate>Fri, 18 Sep 2026 06:00:00 +0300</pubDate>
+          <guid>ep-12</guid>
+          <enclosure url="https://cdn.test/ep12.mp3" type="audio/mpeg" length="1024"/>
+          <itunes:duration>1:02:03</itunes:duration>
+        </item>
+        <item>
+          <title>A written post, no audio</title>
+        </item>
+      </channel>
+    </rss>`;
+
+  const [episode, ...rest] = parseEpisodes(xml, 'show-1');
+
+  assert.equal(rest.length, 0, 'an item with no audio is not an episode');
+  assert.equal(episode.id, 'show-1:ep-12');
+  assert.equal(episode.audioUrl, 'https://cdn.test/ep12.mp3');
+  assert.equal(episode.summary, 'Bu bölümde deprem .');
+  assert.equal(episode.durationSeconds, 3723);
+  assert.ok(episode.publishedAt > 0);
+});
+
+test('durations arrive in three shapes and format for reading', () => {
+  assert.equal(parseDuration('1:02:03'), 3723);
+  assert.equal(parseDuration('42:10'), 2530);
+  assert.equal(parseDuration('900'), 900);
+  assert.equal(parseDuration('  '), undefined);
+  assert.equal(parseDuration('soon'), undefined);
+
+  assert.equal(formatDuration(3723), '1 sa 2 dk');
+  assert.equal(formatDuration(2530), '42 dk');
+  assert.equal(formatDuration(undefined), '');
+  assert.equal(formatDuration(0), '');
 });
 
 test('stripHtml removes scripts and decodes entities', () => {

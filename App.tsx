@@ -9,6 +9,7 @@ import { SourceFilterSheet } from './src/components/SourceFilterSheet';
 import { TabBar, type TabKey } from './src/components/TabBar';
 import { useNewsApp } from './src/hooks/useNewsApp';
 import { FeedScreen } from './src/screens/FeedScreen';
+import { PodcastsScreen } from './src/screens/PodcastsScreen';
 import { SavedScreen } from './src/screens/SavedScreen';
 import { useTheme } from './src/theme';
 import type { FeedTab } from './src/types';
@@ -41,6 +42,8 @@ function AppShell() {
             onAddTab={() => setTabEditor(null)}
             onEditTab={setTabEditor}
           />
+        ) : tab === 'podcasts' ? (
+          <PodcastsScreen app={app} theme={theme} />
         ) : (
           <SavedScreen app={app} theme={theme} />
         )}

@@ -67,6 +67,11 @@ Built with Expo (SDK 57) + React Native + TypeScript.
   with stories you already have filtered out. The subtitle says how many came
   from beyond your sources. It follows the region filter, so the same query
   searches Türkiye or the international desk.
+- **Podcasts** — a third bottom tab lists the most popular shows in your
+  country (or worldwide), from Apple's public chart: no API key, no account.
+  Tapping a show reads its RSS feed and lists recent episodes with dates and
+  durations; tapping an episode hands the audio to the system player. Shows
+  whose feed cannot be resolved offer a link to Apple Podcasts instead.
 - **Save for later** — bookmark articles into a Saved tab, stored on device.
 - **Resilient fetching** — a feed that is slow (12s timeout), offline, or
   returning garbage never blocks the others; the UI reports which sources failed
@@ -183,6 +188,7 @@ src/
     discovery.ts            finds a site's feeds from its address
     translate.ts            keyless preview translation, with a fallback engine
     previewImage.ts         reads a card image from the article's og:image
+    podcasts.ts             Apple's popularity chart, plus episode parsing
     trending.ts             groups the feed into stories by shared coverage
     topStories.ts           Google News top stories, independent of your sources
     newsService.ts          parallel fetch, dedupe, sort, search, timestamps

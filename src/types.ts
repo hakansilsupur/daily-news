@@ -99,6 +99,29 @@ export interface FeedTab {
   sourceIds: string[];
 }
 
+/** A show in the popularity chart, with its feed once one is known. */
+export interface Podcast {
+  id: string;
+  name: string;
+  artist: string;
+  artworkUrl?: string;
+  /** The show's RSS feed — absent when the lookup could not resolve it. */
+  feedUrl?: string;
+  /** Its page on Apple Podcasts, for shows with no readable feed. */
+  appleUrl?: string;
+}
+
+export interface PodcastEpisode {
+  id: string;
+  title: string;
+  summary: string;
+  audioUrl: string;
+  /** Epoch milliseconds, 0 when the feed gave nothing parseable. */
+  publishedAt: number;
+  durationSeconds?: number;
+  imageUrl?: string;
+}
+
 export interface FeedResult {
   sourceId: string;
   articles: Article[];

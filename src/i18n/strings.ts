@@ -18,7 +18,16 @@ export type FeedTabError = 'name-required' | 'no-sources';
  */
 export interface Strings {
   tabHeadlines: string;
+  tabPodcasts: string;
   tabSaved: string;
+
+  podcastsTitle: string;
+  podcastsSubtitle: (scope: string) => string;
+  noPodcastsTitle: string;
+  noPodcastsMessage: string;
+  noEpisodes: string;
+  noPodcastFeed: string;
+  openInApple: string;
 
   feedTitle: string;
   /** e.g. "8 of 11 sources" */
@@ -132,7 +141,17 @@ export interface Strings {
 
 const en: Strings = {
   tabHeadlines: 'Headlines',
+  tabPodcasts: 'Podcasts',
   tabSaved: 'Saved',
+
+  podcastsTitle: 'Podcasts',
+  podcastsSubtitle: (scope) => `Most popular in ${scope}`,
+  noPodcastsTitle: 'No chart to show',
+  noPodcastsMessage:
+    'The podcast chart could not be reached. Pull down to try again, or pick another country.',
+  noEpisodes: 'No episodes could be read from this show’s feed.',
+  noPodcastFeed: 'This show does not publish a feed the app can read.',
+  openInApple: 'Open in Apple Podcasts',
 
   feedTitle: 'Headlines',
   sourceCount: (active, total) => `${active} of ${total} sources`,
@@ -297,7 +316,17 @@ const en: Strings = {
 
 const tr: Strings = {
   tabHeadlines: 'Haberler',
+  tabPodcasts: 'Podcast',
   tabSaved: 'Kaydedilenler',
+
+  podcastsTitle: 'Podcast',
+  podcastsSubtitle: (scope) => `${scope} listesinde en popüler`,
+  noPodcastsTitle: 'Liste alınamadı',
+  noPodcastsMessage:
+    'Podcast listesine ulaşılamadı. Yenilemek için aşağı çekin ya da başka bir ülke seçin.',
+  noEpisodes: 'Bu yayının akışından bölüm okunamadı.',
+  noPodcastFeed: 'Bu yayın, uygulamanın okuyabileceği bir akış sunmuyor.',
+  openInApple: 'Apple Podcasts’te aç',
 
   feedTitle: 'Haberler',
   sourceCount: (active, total) => `${total} kaynaktan ${active} tanesi`,
