@@ -69,12 +69,16 @@ async function checkCountry(country: CountryCode, scope: 'local' | 'world') {
 
   const chartUrl = topEpisodesUrl(country, scope);
   let chartBody = '';
-  try {
-    const chart = await get(chartUrl);
-    chartBody = chart.body;
-    console.log(`episode chart: HTTP ${chart.status} ${chartUrl}`);
-  } catch (error) {
-    console.log(`episode chart: FAIL ${(error as Error).message}`);
+  // Two attempts, as the app makes: a first-try stall is reported, not fatal.
+  for (const attempt of [1, 2]) {
+    try {
+      const chart = await get(chartUrl);
+      chartBody = chart.body;
+      console.log(`episode chart: HTTP ${chart.status} ${chartUrl} (attempt ${attempt})`);
+      break;
+    } catch (error) {
+      console.log(`episode chart: attempt ${attempt} FAIL ${(error as Error).message}`);
+    }
   }
 
   const episodes = parseTopEpisodes(chartBody);

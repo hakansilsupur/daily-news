@@ -76,11 +76,16 @@ Built with Expo (SDK 57) + React Native + TypeScript.
   with stories you already have filtered out. The subtitle says how many came
   from beyond your sources. It follows the region filter, so the same query
   searches Türkiye or the international desk.
-- **Podcasts** — a third bottom tab lists the most popular shows in your
-  country (or worldwide), from Apple's public chart: no API key, no account.
-  Tapping a show reads its RSS feed and lists recent episodes with dates and
-  durations; tapping an episode hands the audio to the system player. Shows
-  whose feed cannot be resolved offer a link to Apple Podcasts instead.
+- **Podcasts: what is hot now** — a third bottom tab lists the episodes people
+  are playing right now in your country (or worldwide), from Apple's public
+  top-episodes chart — no API key, no account — kept to releases from the last
+  14 days. The chart itself carries no dates, so each show's newest episodes are
+  looked up to date the charted ones and supply their audio; an episode older
+  than a full page of its show's newest is dropped as an evergreen. Tapping an
+  episode hands the audio to the system player; the list icon opens the rest of
+  the show. Where a country has no episode chart, popular shows with a new
+  episode in the window stand in. `npm run check-podcasts` exercises all of
+  this against the live endpoints, and CI runs it on every build.
 - **Save for later** — bookmark articles into a Saved tab, stored on device.
 - **Resilient fetching** — a feed that is slow (12s timeout), offline, or
   returning garbage never blocks the others; the UI reports which sources failed

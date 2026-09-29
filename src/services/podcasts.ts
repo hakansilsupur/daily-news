@@ -352,6 +352,22 @@ async function fetchText(url: string, signal?: AbortSignal): Promise<string> {
 }
 
 /**
+ * The chart requests, asked twice before giving up. Apple's chart endpoint
+ * mostly answers in about a second, but now and then one request simply hangs
+ * until the timeout while the next goes straight through — seen on one chart in
+ * each of the first live checks. A second attempt turns that into a slow load
+ * instead of an empty tab. A cancel from the caller is not retried.
+ */
+async function fetchChart(url: string, signal?: AbortSignal): Promise<string> {
+  try {
+    return await fetchText(url, signal);
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    return fetchText(url, signal);
+  }
+}
+
+/**
  * The chart, with each show's feed address attached. A show whose feed cannot
  * be resolved is still listed — it can be opened in Apple Podcasts — but it
  * will have no episodes to show inside the app.
@@ -361,7 +377,7 @@ export async function fetchTopPodcasts(
   scope: 'local' | 'world',
   signal?: AbortSignal,
 ): Promise<Podcast[]> {
-  const chart = parseTopPodcasts(await fetchText(topPodcastsUrl(country, scope), signal));
+  const chart = parseTopPodcasts(await fetchChart(topPodcastsUrl(country, scope), signal));
   if (chart.length === 0) return [];
 
   try {
@@ -430,7 +446,7 @@ export async function fetchTrendingEpisodes(
   signal?: AbortSignal,
   now = Date.now(),
 ): Promise<ChartEpisode[]> {
-  const chart = parseTopEpisodes(await fetchText(topEpisodesUrl(country, scope), signal));
+  const chart = parseTopEpisodes(await fetchChart(topEpisodesUrl(country, scope), signal));
   if (chart.length === 0) return [];
 
   const details = await lookupChartEpisodes(chart, storefrontFor(country, scope), signal);
