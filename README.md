@@ -17,10 +17,19 @@ Built with Expo (SDK 57) + React Native + TypeScript.
   headlines back into your language). If the endpoint is unreachable it falls
   back to grouping your own feed into the stories several of your sources are
   running at once.
-- **Pinned tabs** — a row of tabs across the top of the feed, like pinned lists
-  on X. `All` is always first; `Add +` opens a sheet where you name a tab and
-  tick the sources it holds. Long-press a tab to edit or delete it. The choice
-  of tab persists between launches.
+- **Pinned tabs you can swipe between** — a row of tabs across the top of the
+  feed, like pinned lists on X, and the timelines under them are pages: swipe
+  left or right to move between tabs, or tap a chip to jump. A tab you have
+  visited keeps its headlines, so the page sliding in is not blank while it
+  refetches. `All` is always first after Gündem; `Add +` opens a sheet where you
+  name a tab and tick the sources it holds. Long-press a tab to edit or delete
+  it. The choice of tab persists between launches.
+- **A top bar that stays put, and settings behind it** — the title, tab strip
+  and filter button are fixed above the feed, so the tabs are reachable wherever
+  you are in a timeline. Touching the bar opens the search box, the reading
+  language and the region and source chips; touching it again puts them away
+  (and clears a running search). Reading is the common case, so the controls
+  start closed.
 - **Translated previews** — a chip row on the feed picks the language you read
   in: `Özgün` leaves every headline as its publisher wrote it, any other chip
   machine-translates headlines and summaries into that language. Türkçe is the
@@ -195,8 +204,8 @@ src/
     openArticle.ts          in-app browser with system-browser fallback
   storage/prefs.ts          AsyncStorage persistence (filters, language, tabs, feeds, saves)
   hooks/useNewsApp.ts       all app state in one hook
-  components/               ArticleCard, FeedTabStrip, SegmentedControl, TabBar, …
-  screens/                  FeedScreen, SavedScreen
+  components/               ArticleCard, FeedHeader, FeedPager, FeedPage, TabBar, …
+  screens/                  FeedScreen, PodcastsScreen, SavedScreen
 tests/feed.test.mts         parser + merge/search/format unit tests
 scripts/check-feeds.mts     live feed health check
 ```

@@ -11,7 +11,7 @@ import {
   TRANSLATION_LANGUAGES,
 } from '../src/data/countries';
 import { filterSources, languagesIn } from '../src/data/sources';
-import { pruneTab, sourcesForTab } from '../src/data/tabs';
+import { feedPageIds, pageIndexOf, pruneTab, sourcesForTab } from '../src/data/tabs';
 import {
   candidateUrls,
   COMMON_FEED_PATHS,
@@ -304,6 +304,28 @@ test('a pinned tab drops sources that no longer exist', () => {
     'a deleted feed leaves no hole in the tab',
   );
   assert.deepEqual(pruneTab(tab, sources).sourceIds, ['trt']);
+});
+
+test('the swipeable pages are laid out in the tab strip’s own order', () => {
+  const tabs = [
+    { id: 'tab:1', name: 'Spor', sourceIds: ['trt'] },
+    { id: 'tab:2', name: 'Ekonomi', sourceIds: ['bbc'] },
+  ];
+  const ids = feedPageIds(tabs);
+
+  assert.deepEqual(
+    ids,
+    ['trending', 'all', 'tab:1', 'tab:2'],
+    'Gündem is leftmost, then All, then the pinned tabs as pinned',
+  );
+  assert.equal(pageIndexOf(ids, 'trending'), 0);
+  assert.equal(pageIndexOf(ids, 'tab:2'), 3);
+  assert.equal(
+    pageIndexOf(ids, 'tab:deleted'),
+    1,
+    'a tab deleted while it was open lands on All, not off the end of the pager',
+  );
+  assert.deepEqual(feedPageIds([]), ['trending', 'all'], 'the built-in tabs are always pages');
 });
 
 test('directory search ranks name matches above keyword matches', () => {

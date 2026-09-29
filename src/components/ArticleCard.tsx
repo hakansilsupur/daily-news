@@ -88,7 +88,7 @@ function ArticleCardBase({
         </Text>
 
         {preview.summary ? (
-          <Text style={[styles.summary, { color: theme.textMuted }]} numberOfLines={2}>
+          <Text style={[styles.summary, { color: theme.textMuted }]} numberOfLines={3}>
             {preview.summary}
           </Text>
         ) : null}
@@ -103,7 +103,7 @@ function ArticleCardBase({
       >
         <Ionicons
           name={saved ? 'bookmark' : 'bookmark-outline'}
-          size={20}
+          size={22}
           color={saved ? theme.accent : theme.textMuted}
         />
       </Pressable>
@@ -114,29 +114,29 @@ function ArticleCardBase({
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    gap: 12,
-    padding: 12,
-    marginHorizontal: 16,
-    marginBottom: 10,
-    borderRadius: 14,
+    gap: 14,
+    padding: 14,
+    marginHorizontal: 14,
+    marginBottom: 12,
+    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
   },
   thumb: {
-    width: 84,
-    height: 84,
-    borderRadius: 10,
+    width: 104,
+    height: 104,
+    borderRadius: 12,
   },
   thumbFallback: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   thumbInitial: {
-    fontSize: 30,
+    fontSize: 38,
     fontWeight: '800',
   },
   body: {
     flex: 1,
-    gap: 3,
+    gap: 4,
   },
   metaRow: {
     flexDirection: 'row',
@@ -144,12 +144,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   source: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     flexShrink: 1,
   },
   time: {
-    fontSize: 12,
+    fontSize: 13,
     // A long source name must not squeeze "az önce" down to "az".
     flexShrink: 0,
   },
@@ -164,13 +164,13 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   title: {
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 20,
+    fontSize: 17,
+    fontWeight: '700',
+    lineHeight: 23,
   },
   summary: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
   },
   saveButton: {
     paddingLeft: 4,

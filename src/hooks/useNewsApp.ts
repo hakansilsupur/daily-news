@@ -98,6 +98,13 @@ export interface NewsApp {
   setQuery: (query: string) => void;
 
   articles: Article[];
+  /**
+   * What a given tab has to show right now — the live list for the tab in view,
+   * and the last articles fetched for any other. The swipeable pages read this
+   * so the tab sliding in carries its previous contents rather than a blank
+   * page, the way it did when switching tabs meant waiting for a fetch.
+   */
+  articlesForTab: (tabId: string) => Article[];
   savedArticles: Article[];
   /**
    * What the search box shows: the user's own matching articles, followed by
@@ -155,6 +162,10 @@ export function useNewsApp(): NewsApp {
   const [savedArticles, setSavedArticles] = useState<Article[]>([]);
 
   const [rawArticles, setRawArticles] = useState<Article[]>([]);
+  // Keyed by the source set a fetch was for, not by tab: two tabs holding the
+  // same sources are the same fetch, and a key cannot go stale the way a tab id
+  // can when the tab is edited underneath it.
+  const [articlesByKey, setArticlesByKey] = useState<Record<string, Article[]>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -288,7 +299,9 @@ export function useNewsApp(): NewsApp {
         if (result.error) failures[result.sourceId] = result.error;
       }
 
-      setRawArticles(mergeAndSort(results));
+      const merged = mergeAndSort(results);
+      setRawArticles(merged);
+      setArticlesByKey((current) => ({ ...current, [activeKey]: merged }));
       setErrors(failures);
       setLastUpdated(Date.now());
       setLoading(false);
@@ -473,6 +486,40 @@ export function useNewsApp(): NewsApp {
 
   const articles = useMemo(() => searchArticles(rawArticles, query), [rawArticles, query]);
 
+  const articlesForTab = useCallback<NewsApp['articlesForTab']>(
+    (tabId) => {
+      if (tabId === selectedTabId) return articles;
+
+      // Both built-in tabs draw on the whole filtered set, so neither resolves
+      // to a pinned tab here — `find` returning nothing is the right answer.
+      const tab = feedTabs.find((item) => item.id === tabId) ?? null;
+      const key = sourcesForTab(allSources, tab, {
+        region,
+        language: languageFilter,
+        country,
+        isEnabled: isSourceEnabled,
+      })
+        .map((source) => source.id)
+        .sort()
+        .join('|');
+
+      const cached = articlesByKey[key];
+      return cached ? searchArticles(cached, query) : [];
+    },
+    [
+      selectedTabId,
+      articles,
+      feedTabs,
+      allSources,
+      region,
+      languageFilter,
+      country,
+      isSourceEnabled,
+      articlesByKey,
+      query,
+    ],
+  );
+
   // --- Topic search, beyond the user's own sources --------------------------
   useEffect(() => {
     const trimmed = query.trim();
@@ -591,6 +638,7 @@ export function useNewsApp(): NewsApp {
     query,
     setQuery,
     articles,
+    articlesForTab,
     savedArticles,
     searchResults,
     webResultCount,

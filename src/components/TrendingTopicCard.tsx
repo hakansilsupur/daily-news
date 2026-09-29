@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topic: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
   },
   meta: {
@@ -177,9 +177,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   thumb: {
-    width: 76,
-    height: 76,
-    borderRadius: 10,
+    width: 92,
+    height: 92,
+    borderRadius: 12,
   },
   thumbFallback: {
     alignItems: 'center',
@@ -190,9 +190,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   leadTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 20,
+    fontSize: 17,
+    fontWeight: '700',
+    lineHeight: 23,
   },
   leadMeta: {
     fontSize: 12,
@@ -205,8 +205,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   relatedTitle: {
-    fontSize: 14,
-    lineHeight: 19,
+    fontSize: 15,
+    lineHeight: 21,
   },
   relatedMeta: {
     fontSize: 11,

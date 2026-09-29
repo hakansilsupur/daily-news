@@ -1,32 +1,33 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useCallback } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
+  LayoutAnimation,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
   TextInput,
+  UIManager,
   View,
 } from 'react-native';
 
 import { ArticleCard } from '../components/ArticleCard';
 import { EmptyState } from '../components/EmptyState';
-import { FeedTabStrip } from '../components/FeedTabStrip';
-import { SegmentedControl } from '../components/SegmentedControl';
-import { SourceChips } from '../components/SourceChips';
-import { TranslationChips } from '../components/TranslationChips';
-import { TrendingTopicCard } from '../components/TrendingTopicCard';
+import { FeedHeader } from '../components/FeedHeader';
+import { FeedPager } from '../components/FeedPager';
 import { TRENDING_TAB_ID } from '../data/tabs';
-import type { TrendingTopic } from '../services/trending';
 import type { NewsApp } from '../hooks/useNewsApp';
-import { useTranslationThrottled } from '../hooks/useTranslatedPreview';
-import { regionFilterLabel } from '../i18n';
 import { formatRelativeTime } from '../services/newsService';
 import { openArticle } from '../services/openArticle';
 import type { Theme } from '../theme';
-import type { Article, FeedTab, RegionFilter } from '../types';
+import type { Article, FeedTab } from '../types';
+
+// Harmless where it is not needed: on the New Architecture the method is gone
+// and layout animations work without being switched on.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 interface Props {
   app: NewsApp;
@@ -38,397 +39,147 @@ interface Props {
 
 export function FeedScreen({ app, theme, onOpenFilters, onAddTab, onEditTab }: Props) {
   const { t, selectedTab } = app;
-  const failedCount = Object.keys(app.errors).length;
-  const translationThrottled = useTranslationThrottled();
-
-  const regionOptions: { value: RegionFilter; label: string }[] = (
-    ['all', 'local', 'world'] as RegionFilter[]
-  ).map((value) => ({ value, label: regionFilterLabel(t, value, app.country) }));
+  const searchRef = useRef<TextInput>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const trending = app.selectedTabId === TRENDING_TAB_ID;
   const searching = app.query.trim().length > 0;
 
-  const renderTopic = useCallback(
-    ({ item, index }: { item: TrendingTopic; index: number }) => (
-      <TrendingTopicCard
-        topic={item}
-        rank={index + 1}
-        theme={theme}
-        language={app.uiLanguage}
-        strings={t}
-        translate={app.translatePreviews}
-        translateInto={app.translationLanguage}
-        onPress={openArticle}
-      />
-    ),
-    [theme, app.uiLanguage, t, app.translatePreviews, app.translationLanguage],
-  );
-
-  const renderItem = useCallback(
-    ({ item }: { item: Article }) => (
-      <ArticleCard
-        article={item}
-        theme={theme}
-        language={app.uiLanguage}
-        strings={t}
-        translate={app.translatePreviews}
-        translateInto={app.translationLanguage}
-        saved={app.isSaved(item.id)}
-        onPress={openArticle}
-        onToggleSave={app.toggleSaved}
-      />
-    ),
-    [theme, app.uiLanguage, t, app.translatePreviews, app.translationLanguage, app.isSaved, app.toggleSaved],
-  );
-
-  const header = (
-    <View style={styles.headerBlock}>
-      <View style={styles.titleRow}>
-        <View>
-          <Text style={[styles.title, { color: theme.text }]}>
-            {searching
-              ? t.searchTitle
-              : trending
-                ? t.trendingTitle
-                : selectedTab
-                  ? selectedTab.name
-                  : t.feedTitle}
-          </Text>
-          <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            {searching
-              ? t.searchSubtitle(app.searchResults.length, app.webResultCount)
-              : trending
-              ? app.topStories.length > 0
-                ? t.trendingIndependent(
-                    app.region === 'world' ? t.worldLabel : t.countryName[app.country],
-                  )
-                : t.trendingSubtitle(app.activeSources.length)
-              : selectedTab
-                ? t.tabSelectedCount(app.activeSources.length)
-                : t.sourceCount(app.activeSources.length, app.regionSources.length)}
-            {app.lastUpdated
-              ? t.updatedSuffix(formatRelativeTime(app.lastUpdated, Date.now(), app.uiLanguage))
-              : ''}
-          </Text>
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t.filterSourcesLabel}
-          onPress={onOpenFilters}
-          style={[styles.filterButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-        >
-          <Ionicons name="options-outline" size={20} color={theme.text} />
-        </Pressable>
-      </View>
-
-      <View style={[styles.searchBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <Ionicons name="search" size={16} color={theme.textMuted} />
-        <TextInput
-          value={app.query}
-          onChangeText={app.setQuery}
-          placeholder={t.searchPlaceholder}
-          placeholderTextColor={theme.textMuted}
-          style={[styles.searchInput, { color: theme.text }]}
-          returnKeyType="search"
-        />
-        {app.query ? (
-          <Pressable accessibilityLabel={t.clearSearchLabel} hitSlop={8} onPress={() => app.setQuery('')}>
-            <Ionicons name="close-circle" size={16} color={theme.textMuted} />
-          </Pressable>
-        ) : null}
-      </View>
-
-      <FeedTabStrip
-        theme={theme}
-        strings={t}
-        tabs={app.feedTabs}
-        selectedId={app.selectedTabId}
-        onSelect={app.selectTab}
-        onEdit={onEditTab}
-        onAdd={onAddTab}
-      />
-
-      {/* Reading language is a presentation choice, not a filter, so it applies
-          on a pinned tab too — unlike the region and source controls below. */}
-      <TranslationChips
-        theme={theme}
-        strings={t}
-        enabled={app.translatePreviews}
-        language={app.translationLanguage}
-        onChange={({ enabled, language }) => {
-          app.setTranslatePreviews(enabled);
-          if (enabled) app.setTranslationLanguage(language);
-        }}
-      />
-
-      {/* A pinned tab is its own fixed selection, so the ad-hoc filters below
-          would only contradict it — they belong to the "All" tab alone. */}
-      {selectedTab ? null : (
-        <>
-          <SegmentedControl
-            theme={theme}
-            options={regionOptions}
-            value={app.region}
-            onChange={app.setRegion}
-          />
-
-          <SourceChips
-            theme={theme}
-            sources={app.regionSources}
-            isEnabled={app.isSourceEnabled}
-            onToggle={app.toggleSource}
-          />
-        </>
-      )}
-
-      {failedCount > 0 ? (
-        <Text style={[styles.warning, { color: theme.danger }]}>
-          {t.sourcesUnreachable(failedCount)}
-        </Text>
-      ) : null}
-
-      {translationThrottled && app.translatePreviews ? (
-        <Text style={[styles.warning, { color: theme.textMuted }]}>{t.translationPaused}</Text>
-      ) : null}
-    </View>
-  );
-
-  const listEmpty = () => {
-    if (app.loading && !app.refreshing) {
-      return (
-        <View style={styles.loading}>
-          <ActivityIndicator color={theme.accent} />
-          <Text style={[styles.loadingText, { color: theme.textMuted }]}>{t.fetchingFeeds}</Text>
-        </View>
-      );
+  const toggleSettings = () => {
+    try {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    } catch {
+      // An animation is a nicety; the panel opens either way.
     }
 
-    if (app.activeSources.length === 0) {
-      return selectedTab ? (
-        <EmptyState
-          theme={theme}
-          icon="albums-outline"
-          title={t.emptyTabTitle}
-          message={t.emptyTabMessage}
-          actionLabel={t.editTabAction}
-          onAction={() => onEditTab(selectedTab)}
-        />
-      ) : (
-        <EmptyState
-          theme={theme}
-          icon="funnel-outline"
-          title={t.noSourcesTitle}
-          message={t.noSourcesMessage}
-          actionLabel={t.chooseSources}
-          onAction={onOpenFilters}
-        />
-      );
+    if (expanded) {
+      // Closing the panel closes the search with it: leaving a query running
+      // behind a shut drawer would show results with nothing explaining them.
+      if (app.query) app.setQuery('');
+      setExpanded(false);
+      return;
     }
 
-    if (app.query) {
-      return (
-        <EmptyState
-          theme={theme}
-          icon="search-outline"
-          title={t.noMatchesTitle}
-          message={t.noMatchesMessage(app.query)}
-        />
-      );
-    }
-
-    // Articles arrived, but no story is carried by enough sources to count.
-    if (trending) {
-      return (
-        <EmptyState
-          theme={theme}
-          icon="trending-up-outline"
-          title={t.noTrendsTitle}
-          message={t.noTrendsMessage}
-        />
-      );
-    }
-
-    return (
-      <EmptyState
-        theme={theme}
-        icon="cloud-offline-outline"
-        title={t.nothingToShowTitle}
-        message={t.nothingToShowMessage}
-      />
-    );
+    setExpanded(true);
+    // The search box is the reason the panel is usually opened, so it takes the
+    // cursor; the keyboard can be dismissed without closing anything.
+    setTimeout(() => searchRef.current?.focus(), 120);
   };
 
-  // A query turns the screen into results: the user's own matches, then what
-  // the topic search found beyond them. It applies on every tab, since looking
-  // for a story is not a property of which tab you happened to be on.
-  if (searching) {
-    return (
-      <FlatList
-        data={app.searchResults}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        ListHeaderComponent={header}
-        ListEmptyComponent={
-          app.searchingWeb ? (
-            <View style={styles.loading}>
-              <ActivityIndicator color={theme.accent} />
-              <Text style={[styles.loadingText, { color: theme.textMuted }]}>{t.searchingWeb}</Text>
-            </View>
-          ) : (
-            <EmptyState
-              theme={theme}
-              icon="search-outline"
-              title={t.noMatchesTitle}
-              message={t.noMatchesMessage(app.query)}
-            />
-          )
-        }
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        removeClippedSubviews
-        initialNumToRender={8}
-        refreshControl={
-          <RefreshControl
-            refreshing={app.refreshing}
-            onRefresh={app.refresh}
-            tintColor={theme.accent}
-            colors={[theme.accent]}
-          />
-        }
-      />
-    );
-  }
+  const title = searching
+    ? t.searchTitle
+    : trending
+      ? t.trendingTitle
+      : selectedTab
+        ? selectedTab.name
+        : t.feedTitle;
 
-  // Top stories come from outside the user's sources; when that endpoint cannot
-  // be reached, the tab still works by grouping the feed the user already has.
-  if (trending && (app.topStories.length > 0 || app.topStoriesLoading)) {
-    return (
-      <FlatList
-        data={app.topStories}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        ListHeaderComponent={header}
-        ListEmptyComponent={
-          app.topStoriesLoading ? (
-            <View style={styles.loading}>
-              <ActivityIndicator color={theme.accent} />
-              <Text style={[styles.loadingText, { color: theme.textMuted }]}>{t.fetchingFeeds}</Text>
-            </View>
-          ) : null
-        }
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        removeClippedSubviews
-        initialNumToRender={8}
-        refreshControl={
-          <RefreshControl
-            refreshing={app.refreshing}
-            onRefresh={app.refresh}
-            tintColor={theme.accent}
-            colors={[theme.accent]}
-          />
-        }
-      />
-    );
-  }
+  const subtitle =
+    (searching
+      ? t.searchSubtitle(app.searchResults.length, app.webResultCount)
+      : trending
+        ? app.topStories.length > 0
+          ? t.trendingIndependent(
+              app.region === 'world' ? t.worldLabel : t.countryName[app.country],
+            )
+          : t.trendingSubtitle(app.activeSources.length)
+        : selectedTab
+          ? t.tabSelectedCount(app.activeSources.length)
+          : t.sourceCount(app.activeSources.length, app.regionSources.length)) +
+    (app.lastUpdated
+      ? t.updatedSuffix(formatRelativeTime(app.lastUpdated, Date.now(), app.uiLanguage))
+      : '');
 
-  if (trending) {
-    return (
-      <FlatList
-        data={app.trendingTopics}
-        keyExtractor={(item) => item.key}
-        renderItem={renderTopic}
-        ListHeaderComponent={header}
-        ListEmptyComponent={listEmpty}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        initialNumToRender={4}
-        refreshControl={
-          <RefreshControl
-            refreshing={app.refreshing}
-            onRefresh={app.refresh}
-            tintColor={theme.accent}
-            colors={[theme.accent]}
-          />
-        }
-      />
-    );
-  }
+  const renderItem = ({ item }: { item: Article }) => (
+    <ArticleCard
+      article={item}
+      theme={theme}
+      language={app.uiLanguage}
+      strings={t}
+      translate={app.translatePreviews}
+      translateInto={app.translationLanguage}
+      saved={app.isSaved(item.id)}
+      onPress={openArticle}
+      onToggleSave={app.toggleSaved}
+    />
+  );
 
   return (
-    <FlatList
-      data={app.articles}
-      keyExtractor={(item) => item.id}
-      renderItem={renderItem}
-      ListHeaderComponent={header}
-      ListEmptyComponent={listEmpty}
-      contentContainerStyle={styles.listContent}
-      keyboardShouldPersistTaps="handled"
-      removeClippedSubviews
-      initialNumToRender={8}
-      windowSize={11}
-      refreshControl={
-        <RefreshControl
-          refreshing={app.refreshing}
-          onRefresh={app.refresh}
-          tintColor={theme.accent}
-          colors={[theme.accent]}
+    <View style={styles.root}>
+      <FeedHeader
+        ref={searchRef}
+        app={app}
+        theme={theme}
+        title={title}
+        subtitle={subtitle}
+        expanded={expanded}
+        onToggle={toggleSettings}
+        onOpenFilters={onOpenFilters}
+        onAddTab={onAddTab}
+        onEditTab={onEditTab}
+      />
+
+      {/* A query turns the screen into results: the user's own matches, then
+          what the topic search found beyond them. It replaces the pages rather
+          than living on one, since looking for a story is not a property of
+          which tab you happened to be on. */}
+      {searching ? (
+        <FlatList
+          data={app.searchResults}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          ListEmptyComponent={
+            app.searchingWeb ? (
+              <View style={styles.loading}>
+                <ActivityIndicator color={theme.accent} />
+                <Text style={[styles.loadingText, { color: theme.textMuted }]}>{t.searchingWeb}</Text>
+              </View>
+            ) : (
+              <EmptyState
+                theme={theme}
+                icon="search-outline"
+                title={t.noMatchesTitle}
+                message={t.noMatchesMessage(app.query)}
+              />
+            )
+          }
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          initialNumToRender={6}
+          refreshControl={
+            <RefreshControl
+              refreshing={app.refreshing}
+              onRefresh={app.refresh}
+              tintColor={theme.accent}
+              colors={[theme.accent]}
+            />
+          }
         />
-      }
-    />
+      ) : (
+        <FeedPager
+          app={app}
+          theme={theme}
+          onOpenFilters={onOpenFilters}
+          onEditTab={onEditTab}
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  listContent: {
-    paddingBottom: 24,
-  },
-  headerBlock: {
-    gap: 12,
-    paddingBottom: 12,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-  },
-  subtitle: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  filterButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    paddingHorizontal: 12,
-    height: 40,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  searchInput: {
+  root: {
     flex: 1,
-    fontSize: 15,
-    padding: 0,
   },
-  warning: {
-    fontSize: 12,
-    paddingHorizontal: 16,
+  // The header takes what it needs; the results take the rest, rather than
+  // sizing to their own content and running off the bottom of the screen.
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    paddingTop: 10,
+    paddingBottom: 24,
   },
   loading: {
     alignItems: 'center',

@@ -16,6 +16,27 @@ export function isBuiltInTab(id: string): boolean {
   return id === ALL_TAB_ID || id === TRENDING_TAB_ID;
 }
 
+/**
+ * Every tab in the order they are laid out, left to right. The tab strip and
+ * the swipeable pages read this same list, so a chip and the page it scrolls
+ * to cannot drift apart.
+ */
+export function feedPageIds(tabs: FeedTab[]): string[] {
+  return [TRENDING_TAB_ID, ALL_TAB_ID, ...tabs.map((tab) => tab.id)];
+}
+
+/**
+ * Where a tab sits among the pages. A tab that no longer exists — deleted while
+ * it was open — resolves to `all` rather than to nothing, which would scroll the
+ * pager off its own content.
+ */
+export function pageIndexOf(pageIds: string[], id: string): number {
+  const index = pageIds.indexOf(id);
+  if (index >= 0) return index;
+  const fallback = pageIds.indexOf(ALL_TAB_ID);
+  return fallback >= 0 ? fallback : 0;
+}
+
 export interface AdHocFilters {
   region: RegionFilter;
   language: LanguageFilter;

@@ -37,6 +37,10 @@ export interface Strings {
   searchPlaceholder: string;
   filterSourcesLabel: string;
   clearSearchLabel: string;
+  searchLabel: string;
+  /** The collapsed settings strip at the top of the feed. */
+  showSettingsLabel: string;
+  hideSettingsLabel: string;
   sourcesUnreachable: (count: number) => string;
   fetchingFeeds: string;
 
@@ -159,6 +163,9 @@ const en: Strings = {
   searchPlaceholder: 'Search a topic, in your feeds and the web',
   filterSourcesLabel: 'Filter sources',
   clearSearchLabel: 'Clear search',
+  searchLabel: 'Search',
+  showSettingsLabel: 'Show search and settings',
+  hideSettingsLabel: 'Hide search and settings',
   sourcesUnreachable: (count) =>
     count === 1 ? '1 source could not be reached.' : `${count} sources could not be reached.`,
   fetchingFeeds: 'Fetching feeds…',
@@ -334,6 +341,9 @@ const tr: Strings = {
   searchPlaceholder: 'Konu ara — kaynaklarınız ve web',
   filterSourcesLabel: 'Kaynakları filtrele',
   clearSearchLabel: 'Aramayı temizle',
+  searchLabel: 'Ara',
+  showSettingsLabel: 'Arama ve ayarları göster',
+  hideSettingsLabel: 'Arama ve ayarları gizle',
   sourcesUnreachable: (count) => `${count} kaynağa ulaşılamadı.`,
   fetchingFeeds: 'Akışlar alınıyor…',
 
