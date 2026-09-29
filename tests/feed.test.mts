@@ -27,10 +27,10 @@ import {
   searchArticles,
 } from '../src/services/newsService';
 import {
-  episodeLookupUrl,
   formatDuration,
   idsFromAppleUrl,
   isRecent,
+  isRecentChartEpisode,
   lookupUrl,
   mergeEpisodeDetails,
   parseDuration,
@@ -39,6 +39,8 @@ import {
   parseLookup,
   parseTopEpisodes,
   parseTopPodcasts,
+  showEpisodesLookupUrl,
+  showPages,
   storefrontFor,
   topEpisodesUrl,
   topPodcastsUrl,
@@ -1017,8 +1019,11 @@ test('the episode chart is the same chart one level down, per storefront', () =>
     episodeId: undefined,
   });
 
-  const url = episodeLookupUrl(['1', '2'], 'tr');
-  assert.ok(url.includes('id=1,2'), 'one request for the whole chart');
+  // Apple answers nothing for an episode's own id; the show's id works.
+  const url = showEpisodesLookupUrl(['777', '888'], 'tr', 10);
+  assert.ok(url.includes('id=777,888'), 'several shows per request');
+  assert.ok(url.includes('entity=podcastEpisode'), 'asking for the shows’ episodes, not the shows');
+  assert.ok(url.includes('limit=10'), 'limit counts per show');
   assert.ok(url.includes('country=tr'), 'looked up in the storefront it charted in');
 });
 
@@ -1106,6 +1111,48 @@ test('only recent releases count, and an unknown date is not treated as old', ()
   assert.ok(isRecent(now + 6 * 60 * 60 * 1000, now), 'a date just ahead is time-zone skew');
   assert.ok(isRecent(0, now), 'a missing date is a gap in the data, not proof of age');
   assert.ok(isRecent(undefined, now));
+});
+
+test('an undated charted episode is placed by its show’s newest episodes', () => {
+  const now = Date.parse('2026-09-29T12:00:00Z');
+  const day = 24 * 60 * 60 * 1000;
+  const detail = (showId: string, age: number) => ({ showId, publishedAt: now - age * day });
+
+  // Show 1 publishes daily: its ten newest reach back ten days, inside the window.
+  // Show 2 publishes monthly: its ten newest reach back most of a year.
+  const details = new Map([
+    ...Array.from({ length: 10 }, (_, i) => [`a${i}`, detail('1', i + 1)] as const),
+    ...Array.from({ length: 10 }, (_, i) => [`b${i}`, detail('2', (i + 1) * 30)] as const),
+    ['c0', detail('3', 40)] as const,
+  ]);
+  const pages = showPages(details);
+
+  assert.deepEqual(pages.get('1'), { count: 10, oldest: now - 10 * day });
+  assert.equal(pages.get('3')?.count, 1);
+
+  const undated = (showId?: string) => ({ id: 'x', title: 't', showName: 's', showId, publishedAt: 0 });
+
+  assert.equal(
+    isRecentChartEpisode(undated('2'), pages, now, 10),
+    false,
+    'older than a full page that already reaches past the window: an evergreen, dropped',
+  );
+  assert.equal(
+    isRecentChartEpisode(undated('1'), pages, now, 10),
+    true,
+    'a daily show’s page ends inside the window, so this one could still be recent',
+  );
+  assert.equal(
+    isRecentChartEpisode(undated('3'), pages, now, 10),
+    true,
+    'a short page is the whole catalogue: missing from it is a data gap, not age',
+  );
+  assert.equal(isRecentChartEpisode(undated(undefined), pages, now, 10), true, 'no show to ask');
+  assert.equal(
+    isRecentChartEpisode({ ...undated('1'), publishedAt: now - 20 * day }, pages, now, 10),
+    false,
+    'a dated episode is judged on its own date',
+  );
 });
 
 test('a show’s lookup date is its latest episode, for the recent-shows fallback', () => {

@@ -11,14 +11,15 @@
  * every build.
  */
 import {
-  episodeLookupUrl,
   fetchRecentPodcasts,
-  isRecent,
+  isRecentChartEpisode,
+  lookupChartEpisodes,
   mergeEpisodeDetails,
-  parseEpisodeLookup,
   parseTopEpisodes,
+  showPages,
   storefrontFor,
   topEpisodesUrl,
+  type EpisodeDetails,
 } from '../src/services/podcasts';
 import type { CountryCode } from '../src/types';
 
@@ -45,50 +46,63 @@ function sample(entry: unknown): string {
   );
 }
 
+/**
+ * The recency inference assumes the lookup lists each show newest-first. This
+ * says whether it does, rather than trusting it.
+ */
+function newestFirst(details: Map<string, EpisodeDetails>): string {
+  const byShow = new Map<string, number[]>();
+  for (const episode of details.values()) {
+    if (!episode.showId || !episode.publishedAt) continue;
+    byShow.set(episode.showId, [...(byShow.get(episode.showId) ?? []), episode.publishedAt]);
+  }
+  const ordered = [...byShow.values()].filter((dates) =>
+    dates.every((date, index) => index === 0 || dates[index - 1] >= date),
+  ).length;
+  return `${ordered}/${byShow.size} shows newest-first`;
+}
+
 async function checkCountry(country: CountryCode, scope: 'local' | 'world') {
-  const label = `${storefrontFor(country, scope)} (${scope})`;
-  console.log(`\n== ${label} ==`);
+  const storefront = storefrontFor(country, scope);
+  console.log(`\n== ${storefront} (${scope}) ==`);
   const now = Date.now();
 
   const chartUrl = topEpisodesUrl(country, scope);
-  const chart = await get(chartUrl);
-  console.log(`episode chart: HTTP ${chart.status} ${chartUrl}`);
-
-  let rawResults: unknown[] = [];
+  let chartBody = '';
   try {
-    rawResults = (JSON.parse(chart.body) as { feed?: { results?: unknown[] } }).feed?.results ?? [];
-  } catch {
-    console.log(`  not JSON: ${chart.body.slice(0, 200)}`);
+    const chart = await get(chartUrl);
+    chartBody = chart.body;
+    console.log(`episode chart: HTTP ${chart.status} ${chartUrl}`);
+  } catch (error) {
+    console.log(`episode chart: FAIL ${(error as Error).message}`);
   }
-  console.log(`  raw results: ${rawResults.length}`);
-  if (rawResults[0]) console.log(`  raw[0]: ${sample(rawResults[0])}`);
 
-  const episodes = parseTopEpisodes(chart.body);
-  console.log(`  parsed: ${episodes.length}, dated: ${episodes.filter((e) => e.publishedAt).length}`);
+  const episodes = parseTopEpisodes(chartBody);
+  const withShow = episodes.filter((episode) => episode.showId).length;
+  console.log(`  parsed: ${episodes.length}, with a show id: ${withShow}`);
+  if (episodes[0]) console.log(`  parsed[0]: ${sample(episodes[0])}`);
 
   if (episodes.length > 0) {
-    const lookupAddress = episodeLookupUrl(
-      episodes.map((episode) => episode.id),
-      storefrontFor(country, scope),
-    );
-    const lookup = await get(lookupAddress);
-    let rawLookup: unknown[] = [];
-    try {
-      rawLookup = (JSON.parse(lookup.body) as { results?: unknown[] }).results ?? [];
-    } catch {
-      console.log(`  lookup not JSON: ${lookup.body.slice(0, 200)}`);
-    }
-    console.log(`episode lookup: HTTP ${lookup.status}, raw results: ${rawLookup.length}`);
-    if (rawLookup[0]) console.log(`  raw[0]: ${sample(rawLookup[0])}`);
-
-    const merged = mergeEpisodeDetails(episodes, parseEpisodeLookup(lookup.body));
-    const recent = merged.filter((episode) => isRecent(episode.publishedAt, now));
+    const started = Date.now();
+    const details = await lookupChartEpisodes(episodes, storefront);
+    const pages = showPages(details);
     console.log(
-      `  resolved: ${merged.filter((e) => e.audioUrl).length} with audio, ` +
-        `${merged.filter((e) => e.feedUrl).length} with a show feed; ` +
-        `${recent.length} of ${merged.length} released in the recent window`,
+      `show lookups: ${details.size} episodes across ${pages.size} shows in ${Date.now() - started}ms; ${newestFirst(details)}`,
     );
-    for (const episode of recent.slice(0, 3)) {
+    const first = details.values().next().value;
+    if (first) console.log(`  details[0]: ${sample(first)}`);
+
+    const merged = mergeEpisodeDetails(episodes, details);
+    const kept = merged.filter((episode) => isRecentChartEpisode(episode, pages, now));
+    const dated = merged.filter((episode) => episode.publishedAt).length;
+    console.log(
+      `  matched: ${dated} dated, ${merged.filter((e) => e.audioUrl).length} with audio, ` +
+        `${merged.filter((e) => e.feedUrl).length} with a show feed`,
+    );
+    console.log(
+      `  kept ${kept.length} of ${merged.length}; ${kept.filter((e) => !e.publishedAt).length} of those undated`,
+    );
+    for (const episode of kept.slice(0, 3)) {
       const when = episode.publishedAt ? new Date(episode.publishedAt).toISOString().slice(0, 10) : '????-??-??';
       console.log(`    ${when}  ${episode.showName} — ${episode.title.slice(0, 60)}`);
     }

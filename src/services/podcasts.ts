@@ -189,12 +189,27 @@ export function parseTopEpisodes(body: string): ChartEpisode[] {
 }
 
 /**
- * Lookup by episode id returns the episode itself: its audio, length, exact
- * release time, and the show it belongs to. The storefront matters here — an
- * episode charted in one country may not resolve in another's catalogue.
+ * How many of each show's newest episodes to ask for. A charted episode is
+ * nearly always among them, since charts follow what is new.
  */
-export function episodeLookupUrl(ids: string[], storefront: string): string {
-  return `${LOOKUP_ENDPOINT}?id=${ids.join(',')}&country=${storefront}&entity=podcastEpisode`;
+export const EPISODES_PER_SHOW = 10;
+/** Lookup caps its answer at 200 results; 10 shows of 10 episodes stays well under. */
+const SHOWS_PER_LOOKUP = 10;
+
+/**
+ * The chart carries no release dates, and asking the lookup about an episode's
+ * own id returns nothing. Asking about the *show* does work: with
+ * `entity=podcastEpisode` it answers with that show's newest episodes — audio,
+ * length, exact release time — and `limit` counts per show, so one request
+ * covers several shows. The storefront matters: an episode charted in one
+ * country may not resolve in another's catalogue.
+ */
+export function showEpisodesLookupUrl(
+  showIds: string[],
+  storefront: string,
+  perShow = EPISODES_PER_SHOW,
+): string {
+  return `${LOOKUP_ENDPOINT}?id=${showIds.join(',')}&country=${storefront}&entity=podcastEpisode&limit=${perShow}`;
 }
 
 export interface EpisodeDetails {
@@ -264,6 +279,56 @@ export function mergeEpisodeDetails(
   });
 }
 
+export interface ShowPage {
+  /** How many of the show's newest episodes the lookup returned. */
+  count: number;
+  /** The release time of the oldest of them. */
+  oldest: number;
+}
+
+/** Groups looked-up episodes by show: how many came back, and how far back they reach. */
+export function showPages(details: Map<string, EpisodeDetails>): Map<string, ShowPage> {
+  const pages = new Map<string, ShowPage>();
+  for (const episode of details.values()) {
+    if (!episode.showId || !episode.publishedAt) continue;
+    const page = pages.get(episode.showId);
+    pages.set(episode.showId, {
+      count: (page?.count ?? 0) + 1,
+      oldest: Math.min(page?.oldest ?? Infinity, episode.publishedAt),
+    });
+  }
+  return pages;
+}
+
+/**
+ * Whether a charted episode belongs in the recent list.
+ *
+ * An episode with a date is judged on it. One without — its show's newest
+ * episodes came back, but it was not among them — can still be placed: if the
+ * show returned a full page and even the oldest episode on it falls outside the
+ * window, this one is older still. That is the evergreen case the window is
+ * for. Anything else unknown is kept, since a gap in the data is not proof of
+ * age.
+ */
+export function isRecentChartEpisode(
+  episode: ChartEpisode,
+  pages: Map<string, ShowPage>,
+  now: number,
+  perShow = EPISODES_PER_SHOW,
+): boolean {
+  if (episode.publishedAt) return isRecent(episode.publishedAt, now);
+
+  const page = episode.showId ? pages.get(episode.showId) : undefined;
+  if (page && page.count >= perShow && !isRecent(page.oldest, now)) return false;
+  return true;
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let index = 0; index < items.length; index += size) out.push(items.slice(index, index + size));
+  return out;
+}
+
 async function fetchText(url: string, signal?: AbortSignal): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -331,9 +396,33 @@ export async function fetchRecentPodcasts(
 const MAX_EPISODES = 25;
 
 /**
+ * Every charted show's newest episodes, a few shows per request. A request that
+ * fails costs only its own shows their details; the rest still resolve.
+ */
+export async function lookupChartEpisodes(
+  chart: ChartEpisode[],
+  storefront: string,
+  signal?: AbortSignal,
+): Promise<Map<string, EpisodeDetails>> {
+  const showIds = [...new Set(chart.map((episode) => episode.showId).filter((id): id is string => !!id))];
+  const answers = await Promise.allSettled(
+    chunk(showIds, SHOWS_PER_LOOKUP).map(async (ids) =>
+      parseEpisodeLookup(await fetchText(showEpisodesLookupUrl(ids, storefront), signal)),
+    ),
+  );
+
+  const details = new Map<string, EpisodeDetails>();
+  for (const answer of answers) {
+    if (answer.status !== 'fulfilled') continue;
+    for (const [id, episode] of answer.value) details.set(id, episode);
+  }
+  return details;
+}
+
+/**
  * The episodes people are playing now, released within the recent window, in
- * chart order. The lookup that supplies audio and exact dates is best-effort:
- * without it an episode still lists and opens on Apple Podcasts.
+ * chart order. The lookup that supplies audio and dates is best-effort: without
+ * it an episode still lists and opens on Apple Podcasts.
  */
 export async function fetchTrendingEpisodes(
   country: CountryCode,
@@ -344,17 +433,12 @@ export async function fetchTrendingEpisodes(
   const chart = parseTopEpisodes(await fetchText(topEpisodesUrl(country, scope), signal));
   if (chart.length === 0) return [];
 
-  let merged = chart;
-  try {
-    const details = parseEpisodeLookup(
-      await fetchText(episodeLookupUrl(chart.map((episode) => episode.id), storefrontFor(country, scope)), signal),
-    );
-    merged = mergeEpisodeDetails(chart, details);
-  } catch {
-    // Keep the chart's own fields.
-  }
+  const details = await lookupChartEpisodes(chart, storefrontFor(country, scope), signal);
+  const pages = showPages(details);
 
-  return merged.filter((episode) => isRecent(episode.publishedAt, now)).slice(0, MAX_EPISODES);
+  return mergeEpisodeDetails(chart, details)
+    .filter((episode) => isRecentChartEpisode(episode, pages, now))
+    .slice(0, MAX_EPISODES);
 }
 
 const parser = new XMLParser({
