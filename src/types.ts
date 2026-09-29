@@ -109,6 +109,29 @@ export interface Podcast {
   feedUrl?: string;
   /** Its page on Apple Podcasts, for shows with no readable feed. */
   appleUrl?: string;
+  /** When the show last published, epoch ms; absent when the lookup did not say. */
+  latestEpisodeAt?: number;
+}
+
+/**
+ * An episode on the popularity chart — what people are playing this week, as
+ * opposed to which shows are big overall.
+ */
+export interface ChartEpisode {
+  id: string;
+  title: string;
+  showName: string;
+  /** The show's Apple id, for opening its other episodes. */
+  showId?: string;
+  artworkUrl?: string;
+  appleUrl?: string;
+  /** Epoch milliseconds, 0 when neither the chart nor the lookup gave a date. */
+  publishedAt: number;
+  /** Absent when the lookup could not resolve it; the Apple page is the fallback. */
+  audioUrl?: string;
+  durationSeconds?: number;
+  /** The show's RSS feed, when known, so its other episodes can be listed. */
+  feedUrl?: string;
 }
 
 export interface PodcastEpisode {

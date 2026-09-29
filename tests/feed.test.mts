@@ -27,13 +27,20 @@ import {
   searchArticles,
 } from '../src/services/newsService';
 import {
+  episodeLookupUrl,
   formatDuration,
+  idsFromAppleUrl,
+  isRecent,
   lookupUrl,
+  mergeEpisodeDetails,
   parseDuration,
+  parseEpisodeLookup,
   parseEpisodes,
   parseLookup,
+  parseTopEpisodes,
   parseTopPodcasts,
   storefrontFor,
+  topEpisodesUrl,
   topPodcastsUrl,
 } from '../src/services/podcasts';
 import { extractOgImage, faviconUrl, isAggregatorLink } from '../src/services/previewImage';
@@ -995,6 +1002,123 @@ test('durations arrive in three shapes and format for reading', () => {
   assert.equal(formatDuration(2530), '42 dk');
   assert.equal(formatDuration(undefined), '');
   assert.equal(formatDuration(0), '');
+});
+
+test('the episode chart is the same chart one level down, per storefront', () => {
+  assert.ok(topEpisodesUrl('tr', 'local').endsWith('/tr/podcasts/top/50/podcast-episodes.json'));
+  assert.ok(topEpisodesUrl('tr', 'world').includes('/us/'), 'the world scope borrows the largest chart');
+
+  assert.deepEqual(
+    idsFromAppleUrl('https://podcasts.apple.com/tr/podcast/some-show/id1200361736?i=1000657123456'),
+    { showId: '1200361736', episodeId: '1000657123456' },
+  );
+  assert.deepEqual(idsFromAppleUrl('https://podcasts.apple.com/tr/podcast/id42'), {
+    showId: '42',
+    episodeId: undefined,
+  });
+
+  const url = episodeLookupUrl(['1', '2'], 'tr');
+  assert.ok(url.includes('id=1,2'), 'one request for the whole chart');
+  assert.ok(url.includes('country=tr'), 'looked up in the storefront it charted in');
+});
+
+test('chart episodes take their ids from the link, and need a title', () => {
+  const body = JSON.stringify({
+    feed: {
+      results: [
+        {
+          id: '1000657123456',
+          name: ' Bölüm 88: Seçim sonrası ',
+          artistName: 'Gündem Özeti',
+          releaseDate: '2026-09-27',
+          artworkUrl100: 'https://is1.mzstatic.com/image/thumb/ep/100x100bb.jpg',
+          url: 'https://podcasts.apple.com/tr/podcast/gundem/id777?i=1000657123456',
+        },
+        { id: '5', name: '   ' },
+        { name: 'No id and no link' },
+      ],
+    },
+  });
+
+  const [episode, ...rest] = parseTopEpisodes(body);
+
+  assert.equal(rest.length, 0, 'a blank title or no id at all is not an episode');
+  assert.equal(episode.id, '1000657123456');
+  assert.equal(episode.showId, '777');
+  assert.equal(episode.title, 'Bölüm 88: Seçim sonrası');
+  assert.equal(episode.showName, 'Gündem Özeti');
+  assert.equal(episode.publishedAt, Date.parse('2026-09-27'));
+  assert.equal(episode.artworkUrl, 'https://is1.mzstatic.com/image/thumb/ep/300x300bb.jpg');
+  assert.equal(episode.audioUrl, undefined, 'the chart itself carries no audio');
+
+  assert.deepEqual(parseTopEpisodes('not json'), []);
+});
+
+test('the episode lookup supplies audio, length, exact time and the show', () => {
+  const body = JSON.stringify({
+    results: [
+      // `entity=podcastEpisode` can bring the show back too; it is not an episode.
+      { wrapperType: 'track', kind: 'podcast', collectionId: 777, feedUrl: 'https://x/feed' },
+      {
+        wrapperType: 'podcastEpisode',
+        kind: 'podcast-episode',
+        trackId: 1000657123456,
+        collectionId: 777,
+        collectionName: 'Gündem Özeti',
+        episodeUrl: 'https://cdn.test/88.mp3',
+        trackTimeMillis: 1_800_000,
+        releaseDate: '2026-09-27T05:00:00Z',
+        feedUrl: 'https://feeds.test/gundem.xml',
+      },
+    ],
+  });
+
+  const found = parseEpisodeLookup(body);
+  assert.equal(found.size, 1);
+
+  const details = found.get('1000657123456');
+  assert.equal(details?.audioUrl, 'https://cdn.test/88.mp3');
+  assert.equal(details?.durationSeconds, 1800);
+  assert.equal(details?.publishedAt, Date.parse('2026-09-27T05:00:00Z'));
+  assert.equal(details?.feedUrl, 'https://feeds.test/gundem.xml');
+
+  const [merged] = mergeEpisodeDetails(
+    [{ id: '1000657123456', title: 'Bölüm 88', showName: 'Podbee', publishedAt: Date.parse('2026-09-27') }],
+    found,
+  );
+  assert.equal(merged.showName, 'Gündem Özeti', 'the lookup names the show; the chart may name the network');
+  assert.equal(merged.publishedAt, Date.parse('2026-09-27T05:00:00Z'), 'the exact time beats the calendar day');
+  assert.equal(merged.audioUrl, 'https://cdn.test/88.mp3');
+
+  const [untouched] = mergeEpisodeDetails([{ id: '9', title: 'x', showName: 'y', publishedAt: 5 }], found);
+  assert.equal(untouched.publishedAt, 5, 'an episode the lookup missed keeps what the chart said');
+  assert.equal(parseEpisodeLookup('nonsense').size, 0);
+});
+
+test('only recent releases count, and an unknown date is not treated as old', () => {
+  const now = Date.parse('2026-09-29T12:00:00Z');
+  const day = 24 * 60 * 60 * 1000;
+
+  assert.ok(isRecent(now - 3 * day, now));
+  assert.ok(isRecent(now - 14 * day, now), 'the window is inclusive');
+  assert.ok(!isRecent(now - 15 * day, now));
+  assert.ok(!isRecent(Date.parse('2019-01-01'), now), 'an evergreen episode still being played is not news');
+  assert.ok(isRecent(now + 6 * 60 * 60 * 1000, now), 'a date just ahead is time-zone skew');
+  assert.ok(isRecent(0, now), 'a missing date is a gap in the data, not proof of age');
+  assert.ok(isRecent(undefined, now));
+});
+
+test('a show’s lookup date is its latest episode, for the recent-shows fallback', () => {
+  const found = parseLookup(
+    JSON.stringify({
+      results: [
+        { collectionId: 1, releaseDate: '2026-09-28T04:00:00Z' },
+        { collectionId: 2, releaseDate: 'not a date' },
+      ],
+    }),
+  );
+  assert.equal(found.get('1')?.latestEpisodeAt, Date.parse('2026-09-28T04:00:00Z'));
+  assert.equal(found.get('2')?.latestEpisodeAt, undefined);
 });
 
 test('stripHtml removes scripts and decodes entities', () => {

@@ -51,6 +51,14 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Check the live podcast charts
+        # Informational: the sandbox the app is developed in cannot reach
+        # Apple, so this is where the chart parsers meet the real responses.
+        # A slow or refusing endpoint must never cost the APK.
+        continue-on-error: true
+        timeout-minutes: 3
+        run: npm run check-podcasts
+
       - name: Generate the native Android project
         # android/ is gitignored; prebuild recreates it from app.json.
         run: npx expo prebuild --platform android --clean --no-install

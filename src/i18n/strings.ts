@@ -22,9 +22,15 @@ export interface Strings {
   tabSaved: string;
 
   podcastsTitle: string;
-  podcastsSubtitle: (scope: string) => string;
+  /** The episode chart: what is being played now, released within `days`. */
+  podcastsSubtitle: (scope: string, days: number) => string;
+  /** The fallback when a country has no episode chart. */
+  recentShowsSubtitle: (scope: string, days: number) => string;
   noPodcastsTitle: string;
   noPodcastsMessage: string;
+  noRecentPodcastsTitle: string;
+  noRecentPodcastsMessage: (days: number) => string;
+  moreFromShowLabel: (show: string) => string;
   noEpisodes: string;
   noPodcastFeed: string;
   openInApple: string;
@@ -149,10 +155,16 @@ const en: Strings = {
   tabSaved: 'Saved',
 
   podcastsTitle: 'Podcasts',
-  podcastsSubtitle: (scope) => `Most popular in ${scope}`,
+  podcastsSubtitle: (scope, days) => `Hot episodes in ${scope} · last ${days} days`,
+  recentShowsSubtitle: (scope, days) =>
+    `Popular in ${scope}, with a new episode in the last ${days} days`,
   noPodcastsTitle: 'No chart to show',
   noPodcastsMessage:
     'The podcast chart could not be reached. Pull down to try again, or pick another country.',
+  noRecentPodcastsTitle: 'Nothing new on the chart',
+  noRecentPodcastsMessage: (days) =>
+    `Nothing popular here was released in the last ${days} days. Try another country, or pull down to refresh.`,
+  moreFromShowLabel: (show) => `More episodes of ${show}`,
   noEpisodes: 'No episodes could be read from this show’s feed.',
   noPodcastFeed: 'This show does not publish a feed the app can read.',
   openInApple: 'Open in Apple Podcasts',
@@ -327,10 +339,16 @@ const tr: Strings = {
   tabSaved: 'Kaydedilenler',
 
   podcastsTitle: 'Podcast',
-  podcastsSubtitle: (scope) => `${scope} listesinde en popüler`,
+  podcastsSubtitle: (scope, days) => `${scope} · son ${days} günün öne çıkan bölümleri`,
+  recentShowsSubtitle: (scope, days) =>
+    `${scope} listesinde popüler, son ${days} günde yeni bölümü olanlar`,
   noPodcastsTitle: 'Liste alınamadı',
   noPodcastsMessage:
     'Podcast listesine ulaşılamadı. Yenilemek için aşağı çekin ya da başka bir ülke seçin.',
+  noRecentPodcastsTitle: 'Listede yeni bir şey yok',
+  noRecentPodcastsMessage: (days) =>
+    `Buradaki popüler yayınlardan son ${days} günde yayımlanan yok. Başka bir ülke seçin ya da yenilemek için aşağı çekin.`,
+  moreFromShowLabel: (show) => `${show} yayınının diğer bölümleri`,
   noEpisodes: 'Bu yayının akışından bölüm okunamadı.',
   noPodcastFeed: 'Bu yayın, uygulamanın okuyabileceği bir akış sunmuyor.',
   openInApple: 'Apple Podcasts’te aç',
