@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NewsApp } from '../hooks/useNewsApp';
 import type { PodcastsState } from '../hooks/usePodcasts';
 import { formatRelativeTime } from '../services/newsService';
+import { usePlayer } from '../player/PlayerContext';
 import { openUrl } from '../services/openArticle';
 import { formatDuration } from '../services/podcasts';
 import type { Theme } from '../theme';
@@ -26,32 +27,48 @@ interface Props {
 }
 
 /**
- * A show's recent episodes. Tapping one hands the audio to the system, which
- * is where playback belongs until the app carries a player of its own.
+ * A show's recent episodes. Tapping one plays it in the app's own player, and
+ * tapping the one already playing pauses it.
  */
 export function PodcastSheet({ state, theme, app }: Props) {
   const { t } = app;
   const insets = useSafeAreaInsets();
+  const player = usePlayer();
   const show = state.selected;
 
   const renderEpisode = ({ item }: { item: PodcastEpisode }) => {
     const when = formatRelativeTime(item.publishedAt, Date.now(), app.uiLanguage);
     const length = formatDuration(item.durationSeconds);
+    const nowPlaying = player.isCurrent(item.audioUrl);
 
     return (
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={item.title}
-        onPress={() => openUrl(item.audioUrl)}
+        onPress={() =>
+          player.start({
+            title: item.title,
+            show: show?.name ?? '',
+            audioUrl: item.audioUrl,
+            artworkUrl: item.imageUrl ?? show?.artworkUrl,
+          })
+        }
         style={({ pressed }) => [
           styles.episode,
           { borderBottomColor: theme.border, opacity: pressed ? 0.85 : 1 },
         ]}
       >
-        <Ionicons name="play-circle" size={30} color={theme.accent} />
+        <Ionicons
+          name={nowPlaying && player.playing ? 'pause-circle' : 'play-circle'}
+          size={30}
+          color={theme.accent}
+        />
 
         <View style={styles.episodeText}>
-          <Text style={[styles.episodeTitle, { color: theme.text }]} numberOfLines={2}>
+          <Text
+            style={[styles.episodeTitle, { color: nowPlaying ? theme.accent : theme.text }]}
+            numberOfLines={2}
+          >
             {item.title}
           </Text>
           <Text style={[styles.episodeMeta, { color: theme.textMuted }]} numberOfLines={1}>

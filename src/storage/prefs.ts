@@ -7,6 +7,7 @@ import {
   isTranslationLanguage,
 } from '../data/countries';
 import { ALL_TAB_ID } from '../data/tabs';
+import type { SavedPosition } from '../player/playback';
 import type {
   Article,
   CountryCode,
@@ -32,6 +33,8 @@ const KEYS = {
   translationLanguage: 'prefs:translationLanguage',
   translations: 'prefs:translations',
   previewImages: 'prefs:previewImages',
+  playbackPositions: 'prefs:playbackPositions',
+  playbackRate: 'prefs:playbackRate',
 } as const;
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -159,3 +162,16 @@ export const saveFeedTabs = (tabs: FeedTab[]) => writeJson(KEYS.feedTabs, tabs);
 
 export const loadSelectedTab = () => readJson<string>(KEYS.selectedTab, ALL_TAB_ID);
 export const saveSelectedTab = (id: string) => writeJson(KEYS.selectedTab, id);
+
+/** Where each podcast episode was left, so it resumes rather than restarts. */
+export const loadPlaybackPositions = () =>
+  readJson<Record<string, SavedPosition>>(KEYS.playbackPositions, {});
+export const savePlaybackPositions = (positions: Record<string, SavedPosition>) =>
+  writeJson(KEYS.playbackPositions, positions);
+
+export async function loadPlaybackRate(): Promise<number> {
+  const stored = await readJson<number>(KEYS.playbackRate, 1);
+  // Android accepts 0.1–2; anything else is corruption, not a choice.
+  return typeof stored === 'number' && stored >= 0.5 && stored <= 2 ? stored : 1;
+}
+export const savePlaybackRate = (rate: number) => writeJson(KEYS.playbackRate, rate);

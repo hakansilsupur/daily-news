@@ -5,9 +5,12 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 
 import { AddSourceSheet } from './src/components/AddSourceSheet';
 import { FeedTabSheet } from './src/components/FeedTabSheet';
+import { MiniPlayer } from './src/components/MiniPlayer';
+import { PlayerSheet } from './src/components/PlayerSheet';
 import { SourceFilterSheet } from './src/components/SourceFilterSheet';
 import { TabBar, type TabKey } from './src/components/TabBar';
 import { useNewsApp } from './src/hooks/useNewsApp';
+import { PlayerProvider } from './src/player/PlayerContext';
 import { FeedScreen } from './src/screens/FeedScreen';
 import { PodcastsScreen } from './src/screens/PodcastsScreen';
 import { SavedScreen } from './src/screens/SavedScreen';
@@ -49,6 +52,9 @@ function AppShell() {
         )}
       </View>
 
+      {/* Above the tabs on every screen: the news keeps working under it. */}
+      <MiniPlayer theme={theme} strings={app.t} />
+
       <TabBar
         theme={theme}
         strings={app.t}
@@ -79,6 +85,8 @@ function AppShell() {
         theme={theme}
         app={app}
       />
+
+      <PlayerSheet theme={theme} strings={app.t} />
     </View>
   );
 }
@@ -86,7 +94,9 @@ function AppShell() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AppShell />
+      <PlayerProvider>
+        <AppShell />
+      </PlayerProvider>
     </SafeAreaProvider>
   );
 }

@@ -82,10 +82,16 @@ Built with Expo (SDK 57) + React Native + TypeScript.
   14 days. The chart itself carries no dates, so each show's newest episodes are
   looked up to date the charted ones and supply their audio; an episode older
   than a full page of its show's newest is dropped as an evergreen. Tapping an
-  episode hands the audio to the system player; the list icon opens the rest of
-  the show. Where a country has no episode chart, popular shows with a new
+  episode plays it in the app; the list icon opens the rest of the show. Where a country has no episode chart, popular shows with a new
   episode in the window stand in. `npm run check-podcasts` exercises all of
   this against the live endpoints, and CI runs it on every build.
+- **In-app podcast player** — a bar above the tabs while an episode plays, on
+  every screen, so the news keeps working underneath; tap it for the full
+  player with a scrubber, skip back 15 / forward 30, and speed from 0.8× to 2×.
+  It keeps playing with the screen off, shows on the lock screen and in the
+  notification shade with its own controls, and remembers where each episode
+  was left — resuming a few seconds early, and starting over once you have
+  heard the end. Built on `expo-audio`; the app asks for no microphone access.
 - **Save for later** — bookmark articles into a Saved tab, stored on device.
 - **Resilient fetching** — a feed that is slow (12s timeout), offline, or
   returning garbage never blocks the others; the UI reports which sources failed
@@ -209,6 +215,7 @@ src/
     openArticle.ts          in-app browser with system-browser fallback
   storage/prefs.ts          AsyncStorage persistence (filters, language, tabs, feeds, saves)
   hooks/useNewsApp.ts       all app state in one hook
+  player/                   the podcast player: audio, resume positions, speeds
   components/               ArticleCard, FeedHeader, FeedPager, FeedPage, TabBar, …
   screens/                  FeedScreen, PodcastsScreen, SavedScreen
 tests/feed.test.mts         parser + merge/search/format unit tests

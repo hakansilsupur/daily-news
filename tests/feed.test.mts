@@ -45,6 +45,16 @@ import {
   topEpisodesUrl,
   topPodcastsUrl,
 } from '../src/services/podcasts';
+import {
+  clampSeek,
+  formatClock,
+  formatRate,
+  isFinished,
+  nextRate,
+  PLAYBACK_RATES,
+  recordPosition,
+  resumeFrom,
+} from '../src/player/playback';
 import { extractOgImage, faviconUrl, isAggregatorLink } from '../src/services/previewImage';
 import { parseFeed, parseFeedTitle, stripHtml } from '../src/services/rss';
 import {
@@ -1166,6 +1176,55 @@ test('a show’s lookup date is its latest episode, for the recent-shows fallbac
   );
   assert.equal(found.get('1')?.latestEpisodeAt, Date.parse('2026-09-28T04:00:00Z'));
   assert.equal(found.get('2')?.latestEpisodeAt, undefined);
+});
+
+test('an episode resumes a little before where it was left', () => {
+  const saved = (position: number, duration = 3600) => ({ position, duration, updatedAt: 0 });
+
+  assert.equal(resumeFrom(undefined), 0, 'never heard: from the top');
+  assert.equal(resumeFrom(saved(10)), 0, 'ten seconds in is still the intro');
+  assert.equal(resumeFrom(saved(600)), 597, 'backs up a few seconds, so it does not start mid-word');
+  assert.equal(resumeFrom(saved(3590)), 0, 'stopped in the outro: heard, so it starts over');
+  assert.equal(resumeFrom(saved(600, 0)), 597, 'an unknown length never counts as finished');
+
+  assert.ok(isFinished(3575, 3600));
+  assert.ok(!isFinished(3000, 3600));
+  assert.ok(!isFinished(10_000, 0));
+});
+
+test('remembered positions forget finished episodes and the least recently heard', () => {
+  let positions = recordPosition({}, 'a', 600, 3600, 1);
+  assert.deepEqual(positions.a, { position: 600, duration: 3600, updatedAt: 1 });
+
+  positions = recordPosition(positions, 'a', 3590, 3600, 2);
+  assert.equal(positions.a, undefined, 'finishing an episode clears it');
+
+  positions = recordPosition(positions, 'b', 5, 3600, 3);
+  assert.equal(positions.b, undefined, 'a few seconds in is not worth remembering');
+
+  let full = {};
+  for (let i = 0; i < 4; i++) full = recordPosition(full, `ep${i}`, 100, 3600, i, 3);
+  assert.deepEqual(Object.keys(full).sort(), ['ep1', 'ep2', 'ep3'], 'past the limit, the oldest goes');
+});
+
+test('player clock, speed and seek bounds', () => {
+  assert.equal(formatClock(7), '0:07');
+  assert.equal(formatClock(725), '12:05');
+  assert.equal(formatClock(3723), '1:02:03');
+  assert.equal(formatClock(-4), '0:00');
+  assert.equal(formatClock(Number.NaN), '0:00');
+
+  assert.equal(nextRate(1), 1.25);
+  assert.equal(nextRate(2), 0.8);
+  assert.equal(nextRate(0.8), 1, 'the cycle comes back round to normal speed');
+  assert.equal(nextRate(1.1), PLAYBACK_RATES[0], 'an unknown rate restarts the cycle');
+  assert.ok(PLAYBACK_RATES.every((rate) => rate <= 2), 'Android plays no faster than 2×');
+  assert.equal(formatRate(1), '1×');
+  assert.equal(formatRate(1.25), '1.25×');
+
+  assert.equal(clampSeek(-10, 600), 0);
+  assert.equal(clampSeek(900, 600), 599, 'a skip past the end lands just before it');
+  assert.equal(clampSeek(900, 0), 900, 'with no known length only the start bounds it');
 });
 
 test('stripHtml removes scripts and decodes entities', () => {

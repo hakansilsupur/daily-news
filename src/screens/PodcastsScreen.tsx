@@ -19,6 +19,7 @@ import { usePodcasts } from '../hooks/usePodcasts';
 import { regionFilterLabel } from '../i18n';
 import { formatRelativeTime } from '../services/newsService';
 import { openUrl } from '../services/openArticle';
+import { usePlayer } from '../player/PlayerContext';
 import { formatDuration, RECENT_DAYS } from '../services/podcasts';
 import type { Theme } from '../theme';
 import type { ChartEpisode, Podcast, RegionFilter } from '../types';
@@ -36,6 +37,7 @@ interface Props {
 export function PodcastsScreen({ app, theme }: Props) {
   const { t } = app;
   const state = usePodcasts(app.country, app.region, true);
+  const player = usePlayer();
   const scopeName = app.region === 'world' ? t.worldLabel : t.countryName[app.country];
   const showingShows = state.trending.length === 0 && state.podcasts.length > 0;
 
@@ -60,24 +62,48 @@ export function PodcastsScreen({ app, theme }: Props) {
       const meta = [item.showName, when, formatDuration(item.durationSeconds)]
         .filter(Boolean)
         .join(' · ');
-      const target = item.audioUrl ?? item.appleUrl;
+      const nowPlaying = player.isCurrent(item.audioUrl);
+      // With audio it plays here; without, Apple's page is the only way to hear it.
+      const onPress = item.audioUrl
+        ? () =>
+            player.start({
+              title: item.title,
+              show: item.showName,
+              audioUrl: item.audioUrl as string,
+              artworkUrl: item.artworkUrl,
+            })
+        : item.appleUrl
+          ? () => openUrl(item.appleUrl as string)
+          : undefined;
 
       return (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={item.title}
-          disabled={!target}
-          onPress={() => target && openUrl(target)}
+          disabled={!onPress}
+          onPress={onPress}
           style={({ pressed }) => [
             styles.row,
             { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.85 : 1 },
           ]}
         >
-          <Text style={[styles.rank, { color: theme.textMuted }]}>{index + 1}</Text>
+          {nowPlaying ? (
+            <Ionicons
+              name={player.playing ? 'volume-high' : 'pause'}
+              size={16}
+              color={theme.accent}
+              style={styles.rankIcon}
+            />
+          ) : (
+            <Text style={[styles.rank, { color: theme.textMuted }]}>{index + 1}</Text>
+          )}
           {artwork(item.artworkUrl)}
 
           <View style={styles.rowText}>
-            <Text style={[styles.name, { color: theme.text }]} numberOfLines={2}>
+            <Text
+              style={[styles.name, { color: nowPlaying ? theme.accent : theme.text }]}
+              numberOfLines={2}
+            >
               {item.title}
             </Text>
             <Text style={[styles.meta, { color: theme.textMuted }]} numberOfLines={1}>
@@ -106,12 +132,16 @@ export function PodcastsScreen({ app, theme }: Props) {
               <Ionicons name="list" size={20} color={theme.textMuted} />
             </Pressable>
           ) : (
-            <Ionicons name="play-circle-outline" size={22} color={theme.accent} />
+            <Ionicons
+              name={item.audioUrl ? 'play-circle-outline' : 'open-outline'}
+              size={22}
+              color={theme.accent}
+            />
           )}
         </Pressable>
       );
     },
-    [theme, app.uiLanguage, t, state.openPodcast],
+    [theme, app.uiLanguage, t, state.openPodcast, player],
   );
 
   const renderShow = useCallback(
@@ -263,6 +293,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     minWidth: 18,
+    textAlign: 'center',
+  },
+  rankIcon: {
+    width: 18,
     textAlign: 'center',
   },
   art: {

@@ -6,6 +6,7 @@
     "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "expo": "~57.0.20",
+    "expo-audio": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "expo-web-browser": "~57.0.2",
     "fast-xml-parser": "^5.11.1",

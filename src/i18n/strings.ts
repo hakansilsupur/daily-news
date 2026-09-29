@@ -31,6 +31,19 @@ export interface Strings {
   noRecentPodcastsTitle: string;
   noRecentPodcastsMessage: (days: number) => string;
   moreFromShowLabel: (show: string) => string;
+
+  nowPlaying: string;
+  playLabel: string;
+  pauseLabel: string;
+  skipBackLabel: (seconds: number) => string;
+  skipForwardLabel: (seconds: number) => string;
+  playbackSpeedLabel: (rate: string) => string;
+  seekBarLabel: string;
+  openPlayerLabel: string;
+  collapsePlayerLabel: string;
+  stopPlayerLabel: string;
+  /** Before the first byte arrives, or while the network catches up. */
+  loadingAudio: string;
   noEpisodes: string;
   noPodcastFeed: string;
   openInApple: string;
@@ -165,6 +178,18 @@ const en: Strings = {
   noRecentPodcastsMessage: (days) =>
     `Nothing popular here was released in the last ${days} days. Try another country, or pull down to refresh.`,
   moreFromShowLabel: (show) => `More episodes of ${show}`,
+
+  nowPlaying: 'Now playing',
+  playLabel: 'Play',
+  pauseLabel: 'Pause',
+  skipBackLabel: (seconds) => `Back ${seconds} seconds`,
+  skipForwardLabel: (seconds) => `Forward ${seconds} seconds`,
+  playbackSpeedLabel: (rate) => `Playback speed ${rate}`,
+  seekBarLabel: 'Playback position',
+  openPlayerLabel: 'Open player',
+  collapsePlayerLabel: 'Minimise player',
+  stopPlayerLabel: 'Stop and close player',
+  loadingAudio: 'Loading…',
   noEpisodes: 'No episodes could be read from this show’s feed.',
   noPodcastFeed: 'This show does not publish a feed the app can read.',
   openInApple: 'Open in Apple Podcasts',
@@ -349,6 +374,18 @@ const tr: Strings = {
   noRecentPodcastsMessage: (days) =>
     `Buradaki popüler yayınlardan son ${days} günde yayımlanan yok. Başka bir ülke seçin ya da yenilemek için aşağı çekin.`,
   moreFromShowLabel: (show) => `${show} yayınının diğer bölümleri`,
+
+  nowPlaying: 'Şimdi çalıyor',
+  playLabel: 'Oynat',
+  pauseLabel: 'Duraklat',
+  skipBackLabel: (seconds) => `${seconds} saniye geri`,
+  skipForwardLabel: (seconds) => `${seconds} saniye ileri`,
+  playbackSpeedLabel: (rate) => `Oynatma hızı ${rate}`,
+  seekBarLabel: 'Oynatma konumu',
+  openPlayerLabel: 'Oynatıcıyı aç',
+  collapsePlayerLabel: 'Oynatıcıyı küçült',
+  stopPlayerLabel: 'Durdur ve oynatıcıyı kapat',
+  loadingAudio: 'Yükleniyor…',
   noEpisodes: 'Bu yayının akışından bölüm okunamadı.',
   noPodcastFeed: 'Bu yayın, uygulamanın okuyabileceği bir akış sunmuyor.',
   openInApple: 'Apple Podcasts’te aç',
