@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   rank: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     minWidth: 22,
     textAlign: 'center',
@@ -164,11 +164,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topic: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '800',
   },
   meta: {
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 1,
   },
   lead: {
@@ -177,9 +177,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   thumb: {
-    width: 92,
-    height: 92,
-    borderRadius: 12,
+    width: 72,
+    height: 72,
+    borderRadius: 10,
   },
   thumbFallback: {
     alignItems: 'center',
@@ -190,12 +190,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   leadTitle: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '700',
-    lineHeight: 23,
+    lineHeight: 18,
   },
   leadMeta: {
-    fontSize: 12,
+    fontSize: 11,
   },
   related: {
     marginTop: 10,
@@ -205,8 +205,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   relatedTitle: {
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: 12.5,
+    lineHeight: 17,
   },
   relatedMeta: {
     fontSize: 11,

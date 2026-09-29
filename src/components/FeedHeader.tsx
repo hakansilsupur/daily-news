@@ -172,20 +172,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 10,
+    paddingHorizontal: 14,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
   barText: {
     flex: 1,
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
   },
   subtitle: {
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 11,
+    marginTop: 1,
   },
   barIcon: {
     // Part of the bar's own press target: the chevron is a hint, not a button.

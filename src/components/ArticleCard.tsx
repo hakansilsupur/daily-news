@@ -88,7 +88,7 @@ function ArticleCardBase({
         </Text>
 
         {preview.summary ? (
-          <Text style={[styles.summary, { color: theme.textMuted }]} numberOfLines={3}>
+          <Text style={[styles.summary, { color: theme.textMuted }]} numberOfLines={2}>
             {preview.summary}
           </Text>
         ) : null}
@@ -103,7 +103,7 @@ function ArticleCardBase({
       >
         <Ionicons
           name={saved ? 'bookmark' : 'bookmark-outline'}
-          size={22}
+          size={19}
           color={saved ? theme.accent : theme.textMuted}
         />
       </Pressable>
@@ -114,29 +114,31 @@ function ArticleCardBase({
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    gap: 14,
-    padding: 14,
-    marginHorizontal: 14,
-    marginBottom: 12,
-    borderRadius: 16,
+    gap: 11,
+    padding: 11,
+    marginHorizontal: 12,
+    marginBottom: 8,
+    borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  // The picture sets the card's floor: below about this size the text would be
+  // the taller side and shrinking the image would buy no extra headlines.
   thumb: {
-    width: 104,
-    height: 104,
-    borderRadius: 12,
+    width: 76,
+    height: 76,
+    borderRadius: 10,
   },
   thumbFallback: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   thumbInitial: {
-    fontSize: 38,
+    fontSize: 28,
     fontWeight: '800',
   },
   body: {
     flex: 1,
-    gap: 4,
+    gap: 2,
   },
   metaRow: {
     flexDirection: 'row',
@@ -144,12 +146,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   source: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
     flexShrink: 1,
   },
   time: {
-    fontSize: 13,
+    fontSize: 11,
     // A long source name must not squeeze "az önce" down to "az".
     flexShrink: 0,
   },
@@ -164,13 +166,13 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   title: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '700',
-    lineHeight: 23,
+    lineHeight: 18,
   },
   summary: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 16,
   },
   saveButton: {
     paddingLeft: 4,
